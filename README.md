@@ -220,10 +220,10 @@ strategies
 - **Example**:
 ```javascript
 const strategy = {
-  asset: 'ETH',
-  strategyType: 'IRON_CONDOR',
-  legs: [...],
-  openDate: '2025-05-26'
+  asset: 'EXAMPLE_ASSET',
+  strategyType: 'EXAMPLE_STRATEGY',
+  legs: [/* strategy legs */],
+  openDate: '2024-01-01'
 };
 await storageService.saveStrategy(strategy);
 ```
@@ -339,9 +339,9 @@ const subscription = supabase
 
 ### Getting Help
 - Check GitHub issues
-- Join Discord community
-- Email support@optiontrackr.com
-- Check status.supabase.com
+- Join our community (see community guidelines)
+- Contact project maintainers
+- Check Supabase status page
 
 ## Contributing
 1. Fork the repository
@@ -359,3 +359,148 @@ MIT License
 - Tailwind CSS - Styling
 - Chart.js - Data visualization
 - Supabase - Backend & authentication
+
+## Version Control
+
+### Git Setup
+1. Initialize Git repository (if not already done):
+```bash
+git init
+```
+
+2. Configure Git user information:
+```bash
+git config --global user.name "Your Name"
+git config --global user.email "your.email@example.com"
+```
+
+### GitHub Integration
+
+The project is hosted on GitHub. After cloning, update your remote origin:
+```bash
+git remote set-url origin your-repository-url
+```
+
+#### Basic Workflow
+1. Clone the repository:
+```bash
+git clone https://github.com/vincesector/opt-tracker-vite.git
+cd opt-tracker-vite
+```
+
+2. Create a new branch for your feature:
+```bash
+git checkout -b feature-name
+```
+
+3. Make your changes and commit them:
+```bash
+git add .
+git commit -m "Description of your changes"
+```
+
+4. Push changes to GitHub:
+```bash
+git push origin feature-name
+```
+
+5. Create a pull request on GitHub
+
+#### Best Practices
+- Make small, focused commits
+- Write clear commit messages
+- Pull latest changes before starting new work:
+```bash
+git pull origin main
+```
+- Create a new branch for each feature/fix
+- Review your changes before committing:
+```bash
+git diff
+```
+
+#### Branch Naming Convention
+- Features: `feature/description`
+- Bugfixes: `fix/description`
+- Documentation: `docs/description`
+- Performance improvements: `perf/description`
+
+## Security
+
+### Environment Variables
+The project uses a `.env` file for environment variables. For security:
+1. Never commit `.env` to Git
+2. Use `.env.example` as a template
+3. Each developer should maintain their own `.env` file locally
+
+### Rotating Supabase Keys
+If you need to rotate your Supabase anon key:
+
+1. Go to Supabase Dashboard (https://app.supabase.com)
+2. Select your project
+3. Go to Project Settings → API
+4. Click "Reset anon key" under "Project API keys"
+5. Update your local `.env` file with the new key
+6. If deployed, update the key in your deployment environment
+
+⚠️ After rotating keys:
+- Update all development environments
+- Update production environment
+- Test authentication flows
+- Verify real-time subscriptions
+
+## Database Optimization
+
+### Indexes
+The following indexes are implemented for better query performance:
+
+```sql
+-- Indexes for improved query performance
+idx_strategies_user_id    - Quick access to user's strategies
+idx_strategies_asset     - Fast filtering by asset type
+idx_strategies_open_date - Efficient date-based queries
+idx_strategies_user_date - Optimized user's strategies by date
+```
+
+Benefits:
+- Faster strategy list loading
+- Efficient asset filtering
+- Quick date-based sorting
+- Improved overall query performance
+
+### Security Best Practices
+
+#### Sensitive Information
+Never commit or expose in documentation:
+- API keys or tokens
+- Database credentials
+- Authentication secrets
+- Production URLs
+- User data or statistics
+- Internal configuration details
+
+#### Environment Variables
+Use placeholder values in examples:
+```env
+VITE_SUPABASE_URL=your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key
+```
+
+#### API Examples
+Use placeholder values in code examples:
+```javascript
+const strategy = {
+  id: "example-id",
+  asset: "EXAMPLE",
+  // ...other fields
+};
+```
+
+#### Database Queries
+Avoid exposing actual table structures in examples. Use simplified versions:
+```sql
+CREATE TABLE strategies (
+  id uuid PRIMARY KEY,
+  -- other fields
+);
+```
