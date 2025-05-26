@@ -1,0 +1,48 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    font-family: 'Inter', sans-serif;
+    @apply bg-[#0D1117] text-[#C9D1D9];
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-[#161B22] border border-[#30363D] rounded-lg;
+  }
+
+  .input-field {
+    @apply bg-[#161B22] border border-[#30363D] text-[#C9D1D9] rounded-lg p-3 w-full focus:outline-none focus:border-[#2F81F7] focus:ring-2 focus:ring-[#2F81F7] focus:ring-opacity-30 appearance-none;
+  }
+
+  .select-field {
+    @apply bg-[#161B22] border border-[#30363D] text-[#C9D1D9] rounded-lg p-3 w-full focus:outline-none focus:border-[#2F81F7] focus:ring-2 focus:ring-[#2F81F7] focus:ring-opacity-30 appearance-none pr-10;
+  }
+
+  .btn {
+    @apply rounded-lg px-4 py-2 font-medium transition-colors duration-200;
+  }
+
+  .btn-primary {
+    @apply bg-emerald-500 text-white hover:bg-emerald-600;
+  }
+
+  .btn-secondary {
+    @apply bg-[#21262D] text-[#C9D1D9] border border-[#30363D] hover:bg-[#30363D];
+  }
+
+  .btn-danger {
+    @apply bg-red-600 text-white hover:bg-red-700 rounded-lg w-6 h-6 flex items-center justify-center p-0 text-sm;
+  }
+
+  .table-header {
+    @apply px-4 py-3 text-left text-sm text-gray-400 border-b border-[#30363D];
+  }
+
+  .table-cell {
+    @apply px-4 py-3 text-sm border-b border-[#21262D];
+  }
+}

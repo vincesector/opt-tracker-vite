@@ -1,0 +1,87 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-[#0D1117] text-[#C9D1D9];
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-[#161B22] border border-[#30363D] rounded-lg;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center rounded-lg transition-colors font-medium;
+  }
+
+  .btn-primary {
+    @apply bg-emerald-500 hover:bg-emerald-600 text-white;
+  }
+
+  .btn-secondary {
+    @apply bg-[#21262D] hover:bg-[#30363D] text-[#C9D1D9] border border-[#30363D];
+  }
+
+  .btn-danger {
+    @apply bg-[#21262D] hover:bg-red-600 text-red-400 hover:text-white w-6 h-6 rounded-full;
+  }
+
+  .input-field {
+    @apply bg-[#21262D] border border-[#30363D] text-[#C9D1D9] rounded-lg p-3 w-full focus:outline-none focus:border-[#2F81F7] focus:ring-2 focus:ring-[#2F81F7] focus:ring-opacity-30;
+  }
+
+  .select-field {
+    @apply bg-[#21262D] border border-[#30363D] text-[#C9D1D9] rounded-lg p-3 w-full focus:outline-none focus:border-[#2F81F7] focus:ring-2 focus:ring-[#2F81F7] focus:ring-opacity-30 appearance-none;
+  }
+
+  .table-header {
+    @apply p-3 text-left text-sm text-[#8B949E] border-b border-[#30363D];
+  }
+
+  .table-cell {
+    @apply p-3 text-sm border-b border-[#21262D];
+  }
+
+  .leg-container {
+    @apply bg-[#21262D] rounded-lg border border-[#30363D] p-4;
+  }
+
+  .leg-header {
+    @apply flex justify-between items-center mb-4;
+  }
+
+  .metrics-panel {
+    @apply space-y-4 bg-[#21262D] rounded-lg border border-[#30363D] p-4;
+  }
+
+  .metric-item {
+    @apply flex justify-between items-center;
+  }
+
+  .metric-label {
+    @apply text-[#8B949E];
+  }
+
+  .metric-value {
+    @apply font-medium;
+  }
+
+  .metric-value-positive {
+    @apply text-green-400;
+  }
+
+  .metric-value-negative {
+    @apply text-red-400;
+  }
+
+  .chart-container {
+    @apply bg-[#21262D] rounded-lg border border-[#30363D] p-4 relative min-h-[300px];
+  }
+
+  .stat-card {
+    @apply bg-[#21262D] rounded-lg border border-[#30363D] p-4;
+  }
+}
