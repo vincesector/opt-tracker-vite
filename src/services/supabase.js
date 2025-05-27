@@ -50,24 +50,67 @@ export const auth = {
 export const db = {
   strategies: {
     create: async (strategy) => {
-      const { data, error } = await supabase
-        .from('strategies')
-        .insert([{ ...strategy, user_id: (await auth.getCurrentUser()).id }])
-        .select()
-        .single();
-      
-      if (error) throw error;
-      return data;
+      try {
+        console.log('Attempting to create strategy with data:', JSON.stringify(strategy, null, 2));
+        
+        // Ensure dates are in ISO format
+        const formattedStrategy = {
+          ...strategy,
+          open_date: strategy.open_date ? new Date(strategy.open_date).toISOString() : null,
+          close_date: strategy.close_date ? new Date(strategy.close_date).toISOString() : null
+        };
+        
+        console.log('Formatted strategy data:', JSON.stringify(formattedStrategy, null, 2));
+        
+        const { data, error } = await supabase
+          .from('strategies')
+          .insert([formattedStrategy])
+          .select()
+          .single();
+        
+        if (error) {
+          console.error('Supabase create error details:', {
+            message: error.message,
+            details: error.details,
+            hint: error.hint,
+            code: error.code,
+            fullError: JSON.stringify(error, null, 2)
+          });
+          throw error;
+        }
+        return data;
+      } catch (error) {
+        console.error('Full error object:', {
+          name: error.name,
+          message: error.message,
+          stack: error.stack,
+          fullError: JSON.stringify(error, null, 2)
+        });
+        throw error;
+      }
     },
 
     getAll: async () => {
-      const { data, error } = await supabase
-        .from('strategies')
-        .select('*')
-        .order('timestamp', { ascending: false });
-      
-      if (error) throw error;
-      return data;
+      try {
+        const { data, error } = await supabase
+          .from('strategies')
+          .select('*')
+          .order('created_at', { ascending: false });
+        
+        if (error) {
+          console.error('Supabase getAll error details:', {
+            message: error.message,
+            details: error.details,
+            hint: error.hint,
+            code: error.code
+          });
+          throw error;
+        }
+        return data || [];
+      } catch (error) {
+        console.error('Error getting strategies:', error);
+        throw error;
+      }
     },
 
     getById: async (id) => {
@@ -82,24 +125,46 @@ export const db = {
     },
 
     update: async (id, updates) => {
-      const { data, error } = await supabase
-        .from('strategies')
-        .update(updates)
-        .eq('id', id)
-        .select()
-        .single();
-      
-      if (error) throw error;
-      return data;
+      try {
+        // Remove any undefined values from updates
+        Object.keys(updates).forEach(key => 
+          updates[key] === undefined && delete updates[key]
+        );
+
+        const { data, error } = await supabase
+          .from('strategies')
+          .update(updates)
+          .eq('id', id)
+          .select()
+          .single();
+        
+        if (error) {
+          console.error('Supabase update error details:', error);
+          throw error;
+        }
+        return data;
+      } catch (error) {
+        console.error('Error updating strategy:', error);
+        throw error;
+      }
     },
 
     delete: async (id) => {
-      const { error } = await supabase
-        .from('strategies')
-        .delete()
-        .eq('id', id);
-      
-      if (error) throw error;
+      try {
+        const { error } = await supabase
+          .from('strategies')
+          .delete()
+          .eq('id', id);
+        
+        if (error) {
+          console.error('Supabase delete error details:', error);
+          throw error;
+        }
+        return true;
+      } catch (error) {
+        console.error('Error deleting strategy:', error);
+        throw error;
+      }
     },
 
     getStats: async () => {

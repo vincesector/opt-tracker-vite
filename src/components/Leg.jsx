@@ -37,6 +37,15 @@ const Leg = ({ id, isFirst, onDelete, onChange, values }) => {
     // eslint-disable-next-line
   }, []);
 
+  // Generate unique ids for form controls
+  const inputIds = {
+    action: `leg-${id}-action`,
+    type: `leg-${id}-type`,
+    strike: `leg-${id}-strike`,
+    premium: `leg-${id}-premium`,
+    contracts: `leg-${id}-contracts`
+  };
+
   return (
     <div className="leg-container">
       <div className="leg-header">
@@ -56,30 +65,67 @@ const Leg = ({ id, isFirst, onDelete, onChange, values }) => {
       </div>
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <div>
-          <label className="block text-xs font-medium mb-1 text-[#8B949E]">Action</label>
-          <Select name="action" value={values.action} onChange={handleChange} className="select-field">
+          <label htmlFor={inputIds.action} className="block text-xs font-medium mb-1 text-[#8B949E]">Action</label>
+          <Select 
+            name="action" 
+            id={inputIds.action}
+            value={values.action} 
+            onChange={handleChange} 
+            className="select-field"
+          >
             <option>Sell</option>
             <option>Buy</option>
           </Select>
         </div>
         <div>
-          <label className="block text-xs font-medium mb-1 text-[#8B949E]">Type</label>
-          <Select name="type" value={values.type} onChange={handleChange} className="select-field">
+          <label htmlFor={inputIds.type} className="block text-xs font-medium mb-1 text-[#8B949E]">Type</label>
+          <Select 
+            name="type" 
+            id={inputIds.type}
+            value={values.type} 
+            onChange={handleChange} 
+            className="select-field"
+          >
             <option>Call</option>
             <option>Put</option>
           </Select>
         </div>
         <div>
-          <label className="block text-xs font-medium mb-1 text-[#8B949E]">Strike</label>
-          <Input type="number" name="strike" value={values.strike} onChange={handleChange} placeholder="Strike price" className="input-field" />
+          <label htmlFor={inputIds.strike} className="block text-xs font-medium mb-1 text-[#8B949E]">Strike</label>
+          <Input 
+            type="number" 
+            name="strike" 
+            id={inputIds.strike}
+            value={values.strike} 
+            onChange={handleChange} 
+            placeholder="Strike price" 
+            className="input-field"
+          />
         </div>
         <div>
-          <label className="block text-xs font-medium mb-1 text-[#8B949E]">Premium</label>
-          <Input type="number" name="premium" value={values.premium} onChange={handleChange} placeholder="Premium" className="input-field" />
+          <label htmlFor={inputIds.premium} className="block text-xs font-medium mb-1 text-[#8B949E]">Premium</label>
+          <Input 
+            type="number" 
+            name="premium" 
+            id={inputIds.premium}
+            value={values.premium} 
+            onChange={handleChange} 
+            placeholder="Premium" 
+            className="input-field"
+          />
         </div>
         <div>
-          <label className="block text-xs font-medium mb-1 text-[#8B949E]">Contracts</label>
-          <Input type="number" name="contracts" value={values.contracts} min="1" onChange={handleChange} placeholder="No." className="input-field" />
+          <label htmlFor={inputIds.contracts} className="block text-xs font-medium mb-1 text-[#8B949E]">Contracts</label>
+          <Input 
+            type="number" 
+            name="contracts" 
+            id={inputIds.contracts}
+            value={values.contracts} 
+            min="1" 
+            onChange={handleChange} 
+            placeholder="No." 
+            className="input-field"
+          />
         </div>
       </div>
     </div>

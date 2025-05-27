@@ -64,15 +64,84 @@ const StrategyForm = () => {
   const [legs, setLegs] = useState([{ id: 1 }]);
   const [legData, setLegData] = useState({ 1: { action: 'Sell', type: 'Call', strike: '', premium: '', contracts: 1 } });
   const [strategyType, setStrategyType] = useState('');
+  const [tradeOutcome, setTradeOutcome] = useState('pending');
+  const [assetPrice, setAssetPrice] = useState('');
+  const [marginRequired, setMarginRequired] = useState('');
   const [metrics, setMetrics] = useState({
     netPremium: 0,
     maxProfit: 0,
     maxLoss: 0,
-    breakevens: [],
-    probProfit: 0,
-    roi: 0
+    breakevens: []
   });
-  const [tradeOutcome, setTradeOutcome] = useState('pending');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+
+  const calculateMetrics = () => {
+    if (Object.keys(legData).length > 0 && assetPrice && marginRequired) {
+      const newMetrics = calculateStrategyMetrics(
+        Object.values(legData),
+        parseFloat(assetPrice),
+        parseFloat(marginRequired)
+      );
+      setMetrics(newMetrics);
+    }
+  };
+
+  /**
+   * Effect hook to initialize the chart when the component mounts.
+   */
+  useEffect(() => {
+    if (chartRef.current && !chartInstanceRef.current) {
+      chartInstanceRef.current = initChart(chartRef.current);
+    }
+  }, []);
+
+  /**
+   * Effect hook to update the chart whenever leg data or metrics change.
+   */
+  useEffect(() => {
+    if (Object.keys(legData).length > 0) {
+      setStrategyType(detectStrategyType(Object.values(legData)));
+      calculateMetrics();
+    }
+  }, [legData, assetPrice, marginRequired]);
+
+  useEffect(() => {
+    // Update chart when metrics change
+    if (chartInstanceRef.current && assetPrice) {
+      updatePayoffChart(
+        chartInstanceRef.current,
+        Object.values(legData),
+        assetPrice
+      );
+    }
+  }, [metrics, assetPrice]);
+
+  /**
+   * Handles changes to the asset price input.
+   * Recalculates strategy metrics based on the new asset price.
+   * @param {React.ChangeEvent<HTMLInputElement>} e - The change event.
+   */
+  const handleAssetPriceChange = (e) => {
+    setAssetPrice(e.target.value);
+  };
+
+  const handleMarginRequiredChange = (e) => {
+    setMarginRequired(e.target.value);
+  };
+
+  /**
+   * Handles changes to a specific leg's values.
+   * Updates the leg data and recalculates strategy metrics.
+   * @param {string | number} id - The ID of the leg that changed.
+   * @param {import('./Leg').LegValues} values - The new values for the leg.
+   */
+  const handleLegChange = (id, values) => {
+    setLegData(prev => ({
+      ...prev,
+      [id]: values
+    }));
+  };
 
   /**
    * Adds a new leg to the strategy, up to a maximum of 4 legs.
@@ -103,129 +172,78 @@ const StrategyForm = () => {
     }
   };
 
-  /**
-   * Handles changes to a specific leg's values.
-   * Updates the leg data and recalculates strategy metrics.
-   * @param {string | number} id - The ID of the leg that changed.
-   * @param {import('./Leg').LegValues} values - The new values for the leg.
-   */
-  const handleLegChange = (id, values) => {
-    setLegData(prev => {
-      const newLegData = {
-        ...prev,
-        [id]: values
-      };
-      // Recalculate metrics whenever leg data changes
-      const assetPrice = document.getElementById('asset-price')?.value;
-      const marginRequired = document.getElementById('margin-required')?.value;
-      const newMetrics = calculateStrategyMetrics(Object.values(newLegData), parseFloat(assetPrice), parseFloat(marginRequired));
-      setMetrics(newMetrics);
-      return newLegData;
+  const resetForm = () => {
+    setLegs([{ id: 1 }]);
+    setLegData({ 1: { action: 'Sell', type: 'Call', strike: '', premium: '', contracts: 1 } });
+    setStrategyType('');
+    setTradeOutcome('pending');
+    setAssetPrice('');
+    setMarginRequired('');
+    setMetrics({
+      netPremium: 0,
+      maxProfit: 0,
+      maxLoss: 0,
+      breakevens: []
     });
+    setError(null);
   };
 
-  /**
-   * Handles changes to the asset price input.
-   * Recalculates strategy metrics based on the new asset price.
-   * @param {React.ChangeEvent<HTMLInputElement>} e - The change event.
-   */
-  const handleAssetPriceChange = (e) => {
-    const assetPrice = parseFloat(e.target.value);
-    const marginRequired = document.getElementById('margin-required')?.value;
-    const newMetrics = calculateStrategyMetrics(Object.values(legData), assetPrice, parseFloat(marginRequired));
-    setMetrics(newMetrics);
-  };
-
-  /**
-   * Effect hook to initialize the chart when the component mounts.
-   */
-  useEffect(() => {
-    if (chartRef.current && !chartInstanceRef.current) {
-      chartInstanceRef.current = initChart(chartRef.current);
-    }
-  }, []);
-
-  /**
-   * Effect hook to update the chart whenever leg data or metrics change.
-   */
-  useEffect(() => {
-    if (Object.keys(legData).length > 0) {
-      setStrategyType(detectStrategyType(Object.values(legData)));
-      const assetPrice = document.getElementById('asset-price')?.value;
-      const marginRequired = document.getElementById('margin-required')?.value;
-      setMetrics(calculateStrategyMetrics(Object.values(legData), parseFloat(assetPrice), parseFloat(marginRequired)));
-      if (chartInstanceRef.current) {
-        updatePayoffChart(
-          chartInstanceRef.current, 
-          Object.values(legData), 
-          document.getElementById('asset-price')?.value
-        );
-      }
-    }
-  }, [legData, metrics]);
-
-  /**
-   * Effect hook to detect the strategy type whenever leg data changes.
-   */
-  useEffect(() => {
-    if (Object.keys(legData).length > 0) {
-      setStrategyType(detectStrategyType(Object.values(legData)));
-      const assetPrice = document.getElementById('asset-price')?.value;
-      const marginRequired = document.getElementById('margin-required')?.value;
-      setMetrics(calculateStrategyMetrics(Object.values(legData), parseFloat(assetPrice), parseFloat(marginRequired)));
-      if (chartInstanceRef.current) {
-        updatePayoffChart(
-          chartInstanceRef.current, 
-          Object.values(legData), 
-          document.getElementById('asset-price')?.value
-        );
-      }
-    }
-  }, [legData]);
-
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    
     try {
-      const tradeOutcome = e.target['trade-outcome'].value;
-      const marginRequired = parseFloat(e.target['margin-required'].value);
-      const pnl = tradeOutcome !== 'pending' ? parseFloat(e.target['pnl-amount'].value) : null;
+      setSaving(true);
+      setError(null);
+      
+      const pnl = tradeOutcome !== 'pending' ? parseFloat(e.target['pnl-amount']?.value) : null;
+
+      // Validate required fields
+      if (!assetPrice) {
+        throw new Error('Asset price is required');
+      }
+      if (!marginRequired) {
+        throw new Error('Margin required is required');
+      }
+
+      // Ensure all legs have required fields
+      Object.values(legData).forEach((leg, index) => {
+        if (!leg.strike || !leg.premium) {
+          throw new Error(`Leg ${index + 1} is missing required fields`);
+        }
+      });
 
       const formData = {
         asset: e.target.asset.value,
-        openDate: e.target['open-date'].value,
-        closeDate: e.target['close-date'].value,
-        strategyType,
+        open_date: e.target['open-date'].value,
+        close_date: e.target['close-date'].value || null,
+        strategy_type: strategyType,
         legs: Object.values(legData),
-        marginRequired: marginRequired,
-        assetPrice: e.target['asset-price'].value,
-        maxProfit: metrics.maxProfit,
-        maxLoss: metrics.maxLoss,
-        tradeOutcome: tradeOutcome,
+        margin_required: parseFloat(marginRequired),
+        asset_price: parseFloat(assetPrice),
+        max_profit: metrics.maxProfit === 'Unlimited' ? null : metrics.maxProfit,
+        max_loss: metrics.maxLoss === 'Unlimited' ? null : metrics.maxLoss,
+        net_premium: metrics.netPremium,
+        trade_outcome: tradeOutcome,
         pnl: tradeOutcome === 'loss' ? -pnl : pnl,
-        roi: pnl ? (pnl / marginRequired) * 100 : null,
+        roi: pnl ? (pnl / parseFloat(marginRequired)) * 100 : null,
+        created_at: new Date().toISOString(),
         timestamp: Date.now()
       };
 
-      // Save using storage service
-      storageService.saveStrategy(formData);
+      console.log('Submitting form data:', JSON.stringify(formData, null, 2));
 
-      // Reset form
-      e.target.reset();
-      setLegs([{ id: 1 }]);
-      setLegData({ 1: { action: 'Sell', type: 'Call', strike: '', premium: '', contracts: 1 } });
-      setStrategyType('');
-      setTradeOutcome('pending');
-      setMetrics({
-        netPremium: 0,
-        maxProfit: 0,
-        maxLoss: 0,
-        breakevens: [],
-        probProfit: 0,
-        roi: 0
-      });
+      const savedStrategy = await storageService.saveStrategy(formData);
+      console.log('Strategy saved successfully:', savedStrategy);
+      resetForm();
+      
+      // Optionally add a small delay to ensure the UI updates
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
     } catch (error) {
       console.error('Error saving strategy:', error);
-      // TODO: Show error notification to user
+      setError(error.message || 'Failed to save strategy. Please try again.');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -233,6 +251,11 @@ const StrategyForm = () => {
     <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
       <div className="lg:col-span-2">
         <form onSubmit={handleSubmit} className="card p-6">
+          {error && (
+            <div className="mb-4 p-3 bg-red-900/50 border border-red-700 rounded text-red-400">
+              {error}
+            </div>
+          )}
           <h2 className="text-xl font-semibold mb-6 text-emerald-400 flex items-center">
             <span className="material-icons mr-2">analytics</span>
             Strategy Builder
@@ -241,22 +264,29 @@ const StrategyForm = () => {
             {/* Asset Selection */}
             <div>
               <label htmlFor="asset" className="block text-sm font-medium mb-2 text-[#C9D1D9]">Asset</label>
-              <Select name="asset" id="asset">
-                <option>Ethereum</option>
-                <option>Bitcoin</option>
-                <option>Solana</option>
-              </Select>
+              <Input
+                id="asset"
+                placeholder="Enter asset symbol (e.g., AAPL)"
+                required
+              />
             </div>
-
+            
             {/* Date Fields */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label htmlFor="open-date" className="block text-sm font-medium mb-2 text-[#C9D1D9]">Open Date</label>
-                <DatePicker id="open-date" name="open-date" />
+                <DatePicker
+                  id="open-date"
+                  aria-label="Open Date"
+                  required
+                />
               </div>
               <div>
                 <label htmlFor="close-date" className="block text-sm font-medium mb-2 text-[#C9D1D9]">Close Date</label>
-                <DatePicker id="close-date" name="close-date" />
+                <DatePicker
+                  id="close-date"
+                  aria-label="Close Date (Optional)"
+                />
               </div>
             </div>
 
@@ -266,29 +296,24 @@ const StrategyForm = () => {
               <Input
                 type="text"
                 id="strategy-type"
-                name="strategy-type"
-                value={strategyType}
                 placeholder="e.g., Covered Call, Straddle"
                 readOnly
                 className="bg-[#21262D] cursor-not-allowed"
               />
             </div>
 
-            {/* Legs Section */}
+            {/* Legs */}
             <div className="space-y-4">
-              <label className="block text-sm font-medium mb-2 text-[#C9D1D9]">Strategy Legs</label>
-              <div className="space-y-4">
-                {legs.map((leg, index) => (
-                  <Leg
-                    key={leg.id}
-                    id={leg.id}
-                    isFirst={index === 0}
-                    onDelete={() => removeLeg(leg.id)}
-                    onChange={handleLegChange}
-                    values={legData[leg.id] || { action: index === 0 ? 'Sell' : 'Buy', type: 'Call', strike: '', premium: '', contracts: 1 }}
-                  />
-                ))}
-              </div>
+              {Object.entries(legData).map(([id, values], index) => (
+                <Leg 
+                  key={id}
+                  id={id}
+                  isFirst={index === 0}
+                  onDelete={() => handleRemoveLeg(id)}
+                  onChange={handleLegChange}
+                  values={values}
+                />
+              ))}
 
               {/* Add Leg Button */}
               {legs.length < 4 && (
@@ -310,8 +335,9 @@ const StrategyForm = () => {
                 <Input
                   type="number"
                   id="margin-required"
-                  name="margin-required"
                   placeholder="e.g., 1500"
+                  value={marginRequired}
+                  onChange={handleMarginRequiredChange}
                 />
               </div>
               <div>
@@ -319,8 +345,8 @@ const StrategyForm = () => {
                 <Input
                   type="number"
                   id="asset-price"
-                  name="asset-price"
                   placeholder="e.g., 3000"
+                  value={assetPrice}
                   onChange={handleAssetPriceChange}
                 />
               </div>
@@ -358,12 +384,27 @@ const StrategyForm = () => {
               )}
             </div>
           </div>          {/* Submit Button */}
-          <button
-            type="submit"
-            className="btn btn-primary w-full px-4 py-3 mt-8"
-          >
-            Add Strategy
-          </button>
+          <div className="flex justify-end mt-6">
+            <button
+              type="submit"
+              disabled={saving}
+              className={`btn btn-primary px-6 py-2 flex items-center space-x-2 ${
+                saving ? 'opacity-50 cursor-not-allowed' : ''
+              }`}
+            >
+              {saving ? (
+                <>
+                  <span className="material-icons animate-spin">refresh</span>
+                  <span>Saving...</span>
+                </>
+              ) : (
+                <>
+                  <span className="material-icons">save</span>
+                  <span>Save Strategy</span>
+                </>
+              )}
+            </button>
+          </div>
         </form>
       </div>
       <div className="lg:col-span-3">

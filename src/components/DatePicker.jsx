@@ -20,13 +20,10 @@ const DatePicker = React.forwardRef(({ className, ...props }, ref) => {
     <div className="relative w-full">
       <Input
         type="date"
-        className={`input-field pr-10 ${className || ''}`}
+        className={`input-field ${className || ''}`}
         ref={ref}
         {...props}
       />
-      <span className="material-icons absolute right-3 top-1/2 -translate-y-1/2 text-[#8B949E] pointer-events-none select-none">
-        calendar_today
-      </span>
     </div>
   );
 });

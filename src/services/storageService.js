@@ -1,179 +1,135 @@
 /**
  * Service to handle all data storage operations.
- * Uses Supabase for online storage and localStorage for offline support.
+ * Uses Supabase for persistent cloud storage.
  */
 
-import { supabase } from './supabase';
-
-const STORAGE_KEY = 'optionStrategies';
-const SYNC_STATUS_KEY = 'optionStrategiesSyncStatus';
+import { db } from './supabase';
 
 class StorageService {
   constructor() {
-    // Initialize storage and add cross-tab sync
-    this.initStorage();
-    this.setupStorageListener();
-    this.syncQueue = [];
-    this.isOnline = navigator.onLine;
-    this.setupOnlineListener();
+    // No initialization needed as we're using Supabase directly
   }
 
-  initStorage() {
+  async getStrategies() {
     try {
-      // Ensure storage is available
-      if (!this.isStorageAvailable()) {
-        throw new Error('Local storage is not available');
-      }
-      
-      // Initialize empty array if no data exists
-      if (!localStorage.getItem(STORAGE_KEY)) {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify([]));
-      }
+      console.log('Fetching strategies from database...');
+      const strategies = await db.strategies.getAll();
+      console.log(`Successfully fetched ${strategies?.length || 0} strategies`);
+      return strategies || [];
     } catch (error) {
-      console.error('Storage initialization failed:', error);
-      // Could implement fallback storage method here
-    }
-  }
-
-  setupStorageListener() {
-    // Listen for changes in other tabs/windows
-    window.addEventListener('storage', (e) => {
-      if (e.key === STORAGE_KEY) {
-        // Dispatch custom event for components to update
-        window.dispatchEvent(new CustomEvent('strategiesUpdated', {
-          detail: JSON.parse(e.newValue)
-        }));
-      }
-    });
-  }
-
-  setupOnlineListener() {
-    window.addEventListener('online', () => {
-      this.isOnline = true;
-      this.syncWithSupabase();
-    });
-    
-    window.addEventListener('offline', () => {
-      this.isOnline = false;
-    });
-  }
-
-  async syncWithSupabase() {
-    if (!this.isOnline) return;
-    
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return; // Only sync if user is logged in
-
-      // Get unsynced strategies
-      const syncStatus = JSON.parse(localStorage.getItem(SYNC_STATUS_KEY) || '{}');
-      const strategies = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-      
-      for (const strategy of strategies) {
-        if (!syncStatus[strategy.timestamp]) {
-          // Upload to Supabase
-          await supabase
-            .from('strategies')
-            .upsert([{ ...strategy, user_id: user.id }]);
-          
-          // Mark as synced
-          syncStatus[strategy.timestamp] = true;
-        }
-      }
-      
-      localStorage.setItem(SYNC_STATUS_KEY, JSON.stringify(syncStatus));
-    } catch (error) {
-      console.error('Sync error:', error);
-    }
-  }
-
-  isStorageAvailable() {
-    try {
-      const test = '__storage_test__';
-      localStorage.setItem(test, test);
-      localStorage.removeItem(test);
-      return true;
-    } catch (e) {
-      return false;
-    }
-  }
-
-  getStrategies() {
-    try {
-      const data = localStorage.getItem(STORAGE_KEY);
-      return JSON.parse(data) || [];
-    } catch (error) {
-      console.error('Error getting strategies:', error);
+      console.error('Error getting strategies:', {
+        message: error.message,
+        name: error.name,
+        stack: error.stack,
+        details: error.details,
+        hint: error.hint,
+        code: error.code
+      });
       return [];
     }
   }
 
   async saveStrategy(strategy) {
     try {
-      // Save to localStorage first
-      const strategies = this.getStrategies();
-      strategies.push(strategy);
-      
-      // Check storage limit before saving
-      const dataSize = new Blob([JSON.stringify(strategies)]).size;
-      if (dataSize > 5242880) { // 5MB limit
-        throw new Error('Storage limit exceeded');
-      }
-      
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(strategies));
+      console.log('Attempting to save strategy:', {
+        asset: strategy.asset,
+        type: strategy.strategy_type,
+        legs: strategy.legs?.length,
+        timestamp: strategy.timestamp
+      });
 
-      // If online and logged in, save to Supabase
-      if (this.isOnline) {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          await supabase
-            .from('strategies')
-            .insert([{ ...strategy, user_id: user.id }]);
-          
-          // Mark as synced
-          const syncStatus = JSON.parse(localStorage.getItem(SYNC_STATUS_KEY) || '{}');
-          syncStatus[strategy.timestamp] = true;
-          localStorage.setItem(SYNC_STATUS_KEY, JSON.stringify(syncStatus));
+      // Validate the strategy data before saving
+      if (!strategy.asset) throw new Error('Asset is required');
+      if (!strategy.legs || !Array.isArray(strategy.legs)) throw new Error('Legs must be an array');
+      if (!strategy.margin_required) throw new Error('Margin required is required');
+      if (!strategy.asset_price) throw new Error('Asset price is required');
+
+      const result = await db.strategies.create(strategy);
+      console.log('Strategy saved successfully:', {
+        id: result?.id,
+        asset: result?.asset,
+        timestamp: result?.timestamp
+      });
+      return result;
+    } catch (error) {
+      console.error('Detailed error saving strategy:', {
+        error: {
+          message: error.message,
+          name: error.name,
+          stack: error.stack,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        },
+        strategy: {
+          asset: strategy.asset,
+          type: strategy.strategy_type,
+          legs: strategy.legs?.length,
+          timestamp: strategy.timestamp
         }
-      }
-
-      return true;
-    } catch (error) {
-      console.error('Error saving strategy:', error);
+      });
       throw error;
     }
   }
 
-  updateStrategy(index, strategy) {
+  async updateStrategy(id, strategy) {
     try {
-      const strategies = this.getStrategies();
-      strategies[index] = strategy;
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(strategies));
-      return true;
+      console.log('Attempting to update strategy:', { id, strategy });
+      const result = await db.strategies.update(id, strategy);
+      console.log('Strategy updated successfully:', { id });
+      return result;
     } catch (error) {
-      console.error('Error updating strategy:', error);
+      console.error('Error updating strategy:', {
+        error: {
+          message: error.message,
+          name: error.name,
+          stack: error.stack,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        },
+        id,
+        strategy
+      });
       throw error;
     }
   }
 
-  deleteStrategy(index) {
+  async deleteStrategy(id) {
     try {
-      const strategies = this.getStrategies();
-      strategies.splice(index, 1);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(strategies));
+      console.log('Attempting to delete strategy:', { id });
+      await db.strategies.delete(id);
+      console.log('Strategy deleted successfully:', { id });
       return true;
     } catch (error) {
-      console.error('Error deleting strategy:', error);
+      console.error('Error deleting strategy:', {
+        error: {
+          message: error.message,
+          name: error.name,
+          stack: error.stack,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        },
+        id
+      });
       throw error;
     }
   }
 
-  clearStrategies() {
+  async clearStrategies() {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify([]));
+      console.log('Attempting to clear all strategies');
+      const strategies = await this.getStrategies();
+      await Promise.all(strategies.map(s => this.deleteStrategy(s.id)));
+      console.log('All strategies cleared successfully');
       return true;
     } catch (error) {
-      console.error('Error clearing strategies:', error);
+      console.error('Error clearing strategies:', {
+        message: error.message,
+        name: error.name,
+        stack: error.stack
+      });
       throw error;
     }
   }

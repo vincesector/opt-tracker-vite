@@ -1,17 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import { storageService } from '../services/storageService';
+import { supabase } from '../services/supabase'; // Import supabase client
+import Select from './Select';
+import Input from './Input';
+
+const formatDate = (dateString) => {
+  if (!dateString) return '';
+  return new Date(dateString).toLocaleDateString();
+};
 
 const TradeOutcomePopup = ({ isOpen, onClose, strategy, onUpdate }) => {
-  const [outcome, setOutcome] = useState(strategy.tradeOutcome);
+  const [outcome, setOutcome] = useState(strategy.trade_outcome);
   const [value, setValue] = useState('');
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onUpdate(strategy.timestamp, {
+    onUpdate(strategy.id, {
       ...strategy,
-      tradeOutcome: outcome,
+      trade_outcome: outcome,
       pnl: outcome === 'pending' ? null : parseFloat(value) || 0,
-      roi: outcome === 'pending' ? null : ((parseFloat(value) || 0) / parseFloat(strategy.marginRequired)) * 100
+      roi: outcome === 'pending' ? null : ((parseFloat(value) || 0) / parseFloat(strategy.margin_required)) * 100
     });
     onClose();
   };
@@ -19,36 +27,43 @@ const TradeOutcomePopup = ({ isOpen, onClose, strategy, onUpdate }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+    <div 
+      className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="dialog-title"
+    >
       <div className="bg-[#161B22] border border-[#30363D] rounded-lg p-6 w-96">
-        <h3 className="text-lg font-semibold mb-4 text-emerald-400">Update Trade Outcome</h3>
+        <h3 id="dialog-title" className="text-lg font-semibold mb-4 text-emerald-400">Update Trade Outcome</h3>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-2 text-[#C9D1D9]">Outcome</label>
-            <select
+            <label htmlFor="trade-outcome" className="block text-sm font-medium mb-2 text-[#C9D1D9]">Outcome</label>
+            <Select
+              id="trade-outcome"
+              name="trade-outcome"
               value={outcome}
               onChange={(e) => setOutcome(e.target.value)}
-              className="select-field"
             >
               <option value="pending">Pending</option>
               <option value="profit">Profit</option>
               <option value="loss">Loss</option>
-              <option value="breakeven">Breakeven</option>
-            </select>
+            </Select>
           </div>
           
           {(outcome === 'profit' || outcome === 'loss') && (
             <div>
-              <label className="block text-sm font-medium mb-2 text-[#C9D1D9]">
+              <label htmlFor="amount" className="block text-sm font-medium mb-2 text-[#C9D1D9]">
                 {outcome === 'profit' ? 'Profit Amount ($)' : 'Loss Amount ($)'}
               </label>
-              <input
+              <Input
                 type="number"
+                id="amount"
+                name="amount"
                 value={value}
                 onChange={(e) => setValue(e.target.value)}
                 placeholder="Enter amount"
                 step="0.01"
-                className="input-field"
+                required
               />
             </div>
           )}
@@ -77,47 +92,74 @@ const TradeOutcomePopup = ({ isOpen, onClose, strategy, onUpdate }) => {
 const SavedStrategies = () => {
   const [strategies, setStrategies] = useState([]);
   const [editingStrategy, setEditingStrategy] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  useEffect(() => {
-    const loadStrategies = () => {
-      try {
-        const savedStrategies = storageService.getStrategies();
-        setStrategies(savedStrategies);
-      } catch (error) {
-        console.error('Error loading strategies:', error);
-        // TODO: Show error notification to user
-      }
-    };
-
-    loadStrategies();
-    // Listen for storage changes
-    window.addEventListener('strategiesUpdated', (e) => setStrategies(e.detail));
-    return () => window.removeEventListener('strategiesUpdated', (e) => setStrategies(e.detail));
-  }, []);
-
-  const handleDelete = (timestamp) => {
+  const loadStrategies = async () => {
     try {
-      const index = strategies.findIndex(s => s.timestamp === timestamp);
-      if (index !== -1) {
-        storageService.deleteStrategy(index);
-        setStrategies(storageService.getStrategies());
-      }
+      setLoading(true);
+      setError(null);
+      const savedStrategies = await storageService.getStrategies();
+      setStrategies(savedStrategies);
     } catch (error) {
-      console.error('Error deleting strategy:', error);
-      // TODO: Show error notification to user
+      console.error('Error loading strategies:', error);
+      setError('Failed to load strategies');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleUpdate = (timestamp, updatedStrategy) => {
+  useEffect(() => {
+    console.log('Initializing SavedStrategies component...');
+    // Initial load will be done once subscription is ready
+
+    // Set up real-time subscription
+    const subscription = supabase
+      .channel('strategies_channel')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'strategies',
+      }, (payload) => {
+        console.log('Change received!', payload);
+        // Add a small delay before reloading to ensure the database operation is complete
+        setTimeout(() => {
+          loadStrategies();
+        }, 500); // 500ms delay
+      })
+      .subscribe((status) => {
+        console.log('Subscription status:', status);
+        if (status === 'SUBSCRIBED') {
+          // Initial load once subscription is ready
+          loadStrategies();
+        }
+      });
+
+    // Cleanup subscription on component unmount
+    return () => {
+      supabase.removeChannel(subscription);
+    };
+  }, []); // Empty dependency array means this effect runs once on mount and cleans up on unmount
+
+  const handleDelete = async (id) => {
     try {
-      const index = strategies.findIndex(s => s.timestamp === timestamp);
-      if (index !== -1) {
-        storageService.updateStrategy(index, updatedStrategy);
-        setStrategies(storageService.getStrategies());
-      }
+      setError(null);
+      await storageService.deleteStrategy(id);
+      await loadStrategies(); // Reload the list after deletion
+    } catch (error) {
+      console.error('Error deleting strategy:', error);
+      setError('Failed to delete strategy');
+    }
+  };
+
+  const handleUpdate = async (id, updatedStrategy) => {
+    try {
+      setError(null);
+      await storageService.updateStrategy(id, updatedStrategy);
+      await loadStrategies(); // Reload the list after update
     } catch (error) {
       console.error('Error updating strategy:', error);
-      // TODO: Show error notification to user
+      setError('Failed to update strategy');
     }
   };
 
@@ -143,17 +185,17 @@ const SavedStrategies = () => {
       headers.join(','),
       ...strategies.map(s => [
         s.asset,
-        s.strategyType,
-        s.openDate,
-        s.closeDate,
+        s.strategy_type,
+        s.open_date,
+        s.close_date,
         s.legs.length,
         s.legs.reduce((sum, leg) => sum + parseInt(leg.contracts), 0),
-        s.netPremium,
-        s.maxProfit,
-        s.maxLoss,
-        s.marginRequired,
-        s.assetPrice,
-        s.tradeOutcome,
+        s.net_premium,
+        s.max_profit,
+        s.max_loss,
+        s.margin_required,
+        s.asset_price,
+        s.trade_outcome,
         s.pnl || '',
         s.roi ? s.roi.toFixed(2) + '%' : ''
       ].join(','))
@@ -165,6 +207,26 @@ const SavedStrategies = () => {
     link.download = 'option_strategies.csv';
     link.click();
   };
+
+  if (loading) {
+    return (
+      <div className="card p-6">
+        <div className="flex justify-center items-center h-32">
+          <span className="text-[#8B949E]">Loading strategies...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="card p-6">
+        <div className="flex justify-center items-center h-32">
+          <span className="text-red-400">{error}</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="card p-6">
@@ -207,48 +269,48 @@ const SavedStrategies = () => {
           </thead>
           <tbody>
             {strategies.map((strategy) => (
-              <tr key={strategy.timestamp}>
+              <tr key={strategy.id}>
                 <td className="table-cell">{strategy.asset}</td>
-                <td className="table-cell">{strategy.strategyType}</td>
-                <td className="table-cell">{strategy.openDate}</td>
-                <td className="table-cell">{strategy.closeDate}</td>
+                <td className="table-cell">{strategy.strategy_type}</td>
+                <td className="table-cell">{formatDate(strategy.open_date)}</td>
+                <td className="table-cell">{formatDate(strategy.close_date)}</td>
                 <td className="table-cell">{strategy.legs.length}</td>
                 <td className="table-cell text-right">
                   {strategy.legs.reduce((sum, leg) => sum + parseInt(leg.contracts), 0)}
                 </td>
-                <td className="table-cell text-right">${strategy.netPremium}</td>
+                <td className="table-cell text-right">${strategy.net_premium}</td>
                 <td className="table-cell text-right">
-                  {strategy.maxProfit === 'Unlimited' ? 'Unlimited' : `$${strategy.maxProfit}`}
+                  {strategy.max_profit === 'Unlimited' ? 'Unlimited' : `$${strategy.max_profit}`}
                 </td>
                 <td className="table-cell text-right">
-                  {strategy.maxLoss === 'Unlimited' ? 'Unlimited' : `-$${Math.abs(strategy.maxLoss)}`}
+                  {strategy.max_loss === 'Unlimited' ? 'Unlimited' : `-$${Math.abs(strategy.max_loss)}`}
                 </td>
-                <td className="table-cell text-right">${strategy.marginRequired}</td>
-                <td className="table-cell text-right">${strategy.assetPrice}</td>
+                <td className="table-cell text-right">${strategy.margin_required}</td>
+                <td className="table-cell text-right">${strategy.asset_price}</td>
                 <td className="table-cell text-center">
                   <span className={`tag ${
-                    strategy.tradeOutcome === 'profit' ? 'tag-profit' :
-                    strategy.tradeOutcome === 'loss' ? 'tag-loss' :
+                    strategy.trade_outcome === 'profit' ? 'tag-profit' :
+                    strategy.trade_outcome === 'loss' ? 'tag-loss' :
                     'bg-[#30363D] text-[#8B949E]'
                   }`}>
-                    {strategy.tradeOutcome.charAt(0).toUpperCase() + strategy.tradeOutcome.slice(1)}
+                    {strategy.trade_outcome.charAt(0).toUpperCase() + strategy.trade_outcome.slice(1)}
                   </span>
                 </td>
                 <td className="table-cell text-right">
-                  {strategy.tradeOutcome !== 'pending' ? (
-                    <span className={strategy.pnl >= 0 ? 'text-green-400' : 'text-red-400'}>
-                      ${Math.abs(strategy.pnl).toFixed(2)}
+                  {strategy.trade_outcome !== 'pending' ? (
+                    <span className={strategy.trade_outcome === 'loss' ? 'text-red-400' : 'text-green-400'}>
+                      {strategy.trade_outcome === 'loss' ? '-' : ''}${Math.abs(strategy.pnl).toFixed(2)}
                     </span>
                   ) : ''}
                 </td>
                 <td className="table-cell text-right">
-                  {strategy.tradeOutcome === 'pending' ? (
+                  {strategy.trade_outcome === 'pending' ? (
                     <span className="text-[#8B949E]">
-                      Max: {((strategy.maxProfit / strategy.marginRequired) * 100).toFixed(2)}%
+                      Max: {((strategy.max_profit / strategy.margin_required) * 100).toFixed(2)}%
                     </span>
                   ) : (
-                    <span className={strategy.roi >= 0 ? 'text-green-400' : 'text-red-400'}>
-                      {strategy.roi.toFixed(2)}%
+                    <span className={strategy.trade_outcome === 'loss' ? 'text-red-400' : 'text-green-400'}>
+                      {strategy.trade_outcome === 'loss' ? '-' : ''}{Math.abs(strategy.roi).toFixed(2)}%
                     </span>
                   )}
                 </td>
@@ -262,7 +324,7 @@ const SavedStrategies = () => {
                       <span className="material-icons text-sm">edit</span>
                     </button>
                     <button
-                      onClick={() => handleDelete(strategy.timestamp)}
+                      onClick={() => handleDelete(strategy.id)}
                       className="btn btn-danger p-1"
                       title="Delete strategy"
                     >

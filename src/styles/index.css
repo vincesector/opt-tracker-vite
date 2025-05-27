@@ -6,6 +6,14 @@
   body {
     @apply bg-[#0D1117] text-[#C9D1D9];
   }
+  
+  /* Ensure Material Icons are properly displayed without interference */
+  .material-icons {
+    display: inline-block !important;
+    font-family: 'Material Icons' !important;
+    font-style: normal !important;
+    font-weight: normal !important;
+  }
 }
 
 @layer components {
