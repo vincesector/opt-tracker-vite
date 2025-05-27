@@ -133,6 +133,22 @@ class StorageService {
       throw error;
     }
   }
+
+  async getStats() {
+    try {
+      return await db.strategies.getStats();
+    } catch (error) {
+      console.error('Error getting stats:', error);
+      return {
+        totalTrades: 0,
+        wins: 0,
+        losses: 0,
+        totalPnL: 0,
+        totalMarginUsed: 0,
+        roi: 0
+      };
+    }
+  }
 }
 
 // Create and export a singleton instance

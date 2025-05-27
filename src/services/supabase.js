@@ -174,13 +174,32 @@ export const db = {
       
       if (error) throw error;
 
+      // Filter out pending trades
+      const completedTrades = strategies.filter(s => s.trade_outcome !== 'pending');
+      const winningTrades = strategies.filter(s => s.trade_outcome === 'profit');
+      const losingTrades = strategies.filter(s => s.trade_outcome === 'loss');
+
+      // Calculate P&L totals from completed trades
+      const profitTotal = winningTrades.reduce((sum, s) => sum + (s.pnl || 0), 0);
+      const lossTotal = losingTrades.reduce((sum, s) => sum + (Math.abs(s.pnl) || 0), 0);
+      const totalPnL = profitTotal - lossTotal;
+      
+      // Calculate total margin used from completed trades
+      const totalMarginUsed = completedTrades.reduce((sum, s) => sum + s.margin_required, 0);
+
+      // Calculate ROI only from completed trades
+      // ROI should be negative if total P&L is negative
+      const roi = completedTrades.length > 0 
+        ? (totalPnL / totalMarginUsed) * 100 
+        : 0;
+
       return {
-        totalTrades: strategies.length,
-        wins: strategies.filter(s => s.tradeOutcome === 'profit').length,
-        losses: strategies.filter(s => s.tradeOutcome === 'loss').length,
-        totalPnL: strategies.reduce((sum, s) => sum + (s.pnl || 0), 0),
-        totalMarginUsed: strategies.reduce((sum, s) => sum + s.marginRequired, 0),
-        roi: strategies.reduce((sum, s) => sum + (s.roi || 0), 0) / strategies.length,
+        totalTrades: completedTrades.length,
+        wins: winningTrades.length,
+        losses: losingTrades.length,
+        totalPnL: parseFloat(totalPnL.toFixed(2)),
+        totalMarginUsed: parseFloat(totalMarginUsed.toFixed(2)),
+        roi: parseFloat(roi.toFixed(2)),
       };
     }
   }

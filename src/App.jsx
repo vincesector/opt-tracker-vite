@@ -1,8 +1,55 @@
 import React from 'react';
 import StrategyForm from './components/StrategyForm';
 import SavedStrategies from './components/SavedStrategies';
+import { storageService } from './services/storageService';
+import { supabase } from './services/supabase';
 
 function App() {
+  const [stats, setStats] = React.useState({
+    totalTrades: 0,
+    wins: 0,
+    losses: 0,
+    totalPnL: 0,
+    totalMarginUsed: 0,
+    roi: 0
+  });
+
+  React.useEffect(() => {
+    const loadStats = async () => {
+      try {
+        const stats = await storageService.getStats();
+        setStats(stats);
+      } catch (error) {
+        console.error('Error loading stats:', error);
+      }
+    };
+    
+    loadStats();
+
+    // Subscribe to strategy changes to update stats
+    const subscription = supabase
+      .channel('strategies_channel')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'strategies',
+      }, () => {
+        loadStats();
+      })
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  const formatCurrency = (value) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+    }).format(value);
+  };
+
   return (
     <div className="min-h-screen bg-[#0D1117] text-[#C9D1D9] flex flex-col">
       <header className="bg-[#161B22] border-b border-[#30363D] sticky top-0 z-50">
@@ -45,27 +92,27 @@ function App() {
               <div className="flex-grow flex flex-wrap gap-x-6 gap-y-2 items-center">
                 <span className="flex items-center">
                   <span className="material-icons text-blue-400 mr-1 text-base">bar_chart</span>
-                  Total Trades: <strong className="ml-1">2</strong>
+                  Total Trades: <strong className="ml-1">{stats.totalTrades}</strong>
                 </span>
                 <span className="flex items-center">
                   <span className="material-icons text-green-400 mr-1 text-base">check_circle</span>
-                  Wins: <strong className="ml-1">2</strong>
+                  Wins: <strong className="ml-1">{stats.wins}</strong>
                 </span>
                 <span className="flex items-center">
                   <span className="material-icons text-red-400 mr-1 text-base">cancel</span>
-                  Losses: <strong className="ml-1">0</strong>
+                  Losses: <strong className="ml-1">{stats.losses}</strong>
                 </span>
                 <span className="flex items-center">
                   <span className="material-icons text-yellow-400 mr-1 text-base">account_balance_wallet</span>
-                  Total Margin Used: <strong className="ml-1">$21,406.40</strong>
+                  Total Margin Used: <strong className="ml-1">{formatCurrency(stats.totalMarginUsed)}</strong>
                 </span>
-                <span className="flex items-center text-green-400">
-                  <span className="material-icons mr-1 text-base">trending_up</span>
-                  Net P&L: <strong className="ml-1">$139.20</strong>
+                <span className={`flex items-center ${stats.totalPnL >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                  <span className="material-icons mr-1 text-base">{stats.totalPnL >= 0 ? 'trending_up' : 'trending_down'}</span>
+                  Net P&L: <strong className="ml-1">{formatCurrency(stats.totalPnL)}</strong>
                 </span>
-                <span className="flex items-center">
+                <span className={`flex items-center ${stats.roi >= 0 ? 'text-purple-400' : 'text-red-400'}`}>
                   <span className="material-icons text-purple-400 mr-1 text-base">percent</span>
-                  Overall ROI: <strong className="ml-1">0.65%</strong>
+                  Overall ROI: <strong className="ml-1">{stats.roi}%</strong>
                 </span>
               </div>
               <button className="btn btn-secondary text-xs py-1 px-3 flex items-center space-x-1 ml-auto">

@@ -111,7 +111,9 @@ const SavedStrategies = () => {
 
   useEffect(() => {
     console.log('Initializing SavedStrategies component...');
-    // Initial load will be done once subscription is ready
+    
+    // Load strategies immediately
+    loadStrategies();
 
     // Set up real-time subscription
     const subscription = supabase
@@ -129,6 +131,10 @@ const SavedStrategies = () => {
       })
       .subscribe((status) => {
         console.log('Subscription status:', status);
+        if (status === 'SUBSCRIBED') {
+          // Reload strategies when subscription is ready
+          loadStrategies();
+        }
         if (status === 'SUBSCRIBED') {
           // Initial load once subscription is ready
           loadStrategies();
