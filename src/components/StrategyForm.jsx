@@ -308,6 +308,7 @@ const StrategyForm = () => {
                 placeholder="e.g., Covered Call, Straddle"
                 readOnly
                 className="bg-[#21262D] cursor-not-allowed"
+                value={strategyType} // Bind value to state
               />
             </div>
 
@@ -427,45 +428,122 @@ const StrategyForm = () => {
             <canvas ref={chartRef}></canvas>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <div className="stat-card">
-              <span className="text-xs font-medium text-[#8B949E] block mb-1">Net Premium</span>
+          {/* Strategy Metrics Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            {/* Net Premium Card */}
+            <div className="stat-card flex flex-col justify-between">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-[#8B949E]">Net Premium <span className="material-icons text-xs cursor-help" title="Total premium received minus total premium paid.">info</span></span>
+                {/* Placeholder for sparkline - requires a charting library */}
+                <span className="text-green-400">~</span>
+              </div>
               <span className="text-lg font-semibold">
                 ${typeof metrics.netPremium === 'number' ? metrics.netPremium.toFixed(2) : metrics.netPremium}
               </span>
             </div>
-            <div className="stat-card">
-              <span className="text-xs font-medium text-[#8B949E] block mb-1">Max Profit</span>
+
+            {/* Max Profit Card */}
+            <div className="stat-card flex flex-col justify-between">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-[#8B949E]">Max Profit <span className="material-icons text-xs cursor-help" title="The maximum potential gain from the strategy.">info</span></span>
+                <span className="material-icons text-green-400">trending_up</span>
+              </div>
               <span className={`text-lg font-semibold ${metrics.maxProfit > 0 ? 'metric-value-positive' : ''}`}>
                 {metrics.maxProfit === 'Unlimited' ? 'Unlimited' : `$${metrics.maxProfit.toFixed(2)}`}
               </span>
             </div>
-            <div className="stat-card">
-              <span className="text-xs font-medium text-[#8B949E] block mb-1">Max Loss</span>
+
+            {/* Max Loss Card */}
+            <div className="stat-card flex flex-col justify-between">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-[#8B949E]">Max Loss <span className="material-icons text-xs cursor-help" title="The maximum potential loss from the strategy.">info</span></span>
+                <span className="material-icons text-red-400">trending_down</span>
+              </div>
               <span className={`text-lg font-semibold ${typeof metrics.maxLoss === 'number' ? 'metric-value-negative' : ''}`}>
                 {metrics.maxLoss === 'Unlimited' ? 'Unlimited' : `-$${Math.abs(metrics.maxLoss).toFixed(2)}`}
               </span>
             </div>
+
+            {/* Breakeven Range Card */}
+            <div className="stat-card flex flex-col justify-between">
+               <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-[#8B949E]">Breakeven Range <span className="material-icons text-xs cursor-help" title="The price(s) at which the strategy results in neither a profit nor a loss.">info</span></span>
+                {/* Placeholder for mini bar/chart - requires a charting library */}
+                 <span className="text-blue-400">--</span>
+              </div>
+              <span className="text-lg font-semibold">
+                {metrics.breakevens.length > 0 ? 
+                  `$${metrics.breakevens.map(b => b.toFixed(2)).join(' - $')}` 
+                  : 'N/A'}
+              </span>
+            </div>
           </div>
 
-          <div className="metrics-panel">
-            <div className="metric-item">
-              <span className="metric-label">Breakeven Points</span>
-              <span className="metric-value">
-                ${metrics.breakevens.map(b => b.toFixed(2)).join(', $')}
-              </span>
+          {/* Simplified Explanation Callout */}
+          {(metrics.maxProfit !== 0 || metrics.maxLoss !== 0 || metrics.maxProfit === 'Unlimited' || metrics.maxLoss === 'Unlimited') && strategyType !== 'Custom' && (
+            <div className="p-4 bg-[#1f242c] border-l-4 border-emerald-400 rounded-r-md mb-6">
+              <p className="text-sm text-[#C9D1D9] mb-2">Simplified Explanation:</p>
+              
+              {/* Max Profit Explanation */}
+              {metrics.maxProfit !== 0 && metrics.maxProfit !== 'Unlimited' && (
+                <p className="text-sm text-green-400 flex items-center mb-1">
+                  <span className="material-icons text-sm mr-2">check_circle</span>
+                  {strategyType === 'Long Call' && metrics.breakevens.length > 0 &&
+                    `If ${asset || 'the asset'} closes above $${metrics.breakevens[0].toFixed(2)}, you get max profit.`}
+                  {strategyType === 'Long Put' && metrics.breakevens.length > 0 &&
+                    `If ${asset || 'the asset'} closes below $${metrics.breakevens[0].toFixed(2)}, you get max profit.`}
+                  {strategyType === 'Covered Call' && legData[1]?.strike &&
+                     `If ${asset || 'the asset'} closes below $${parseFloat(legData[1].strike).toFixed(2)}, you get max profit.`}
+                  {strategyType === 'Cash Secured Put' && legData[1]?.strike &&
+                     `If ${asset || 'the asset'} closes above $${parseFloat(legData[1].strike).toFixed(2)}, you get max profit.`}
+                  {(strategyType === 'Call Debit Spread' || strategyType === 'Put Credit Spread') && legData[Object.keys(legData).find(key => legData[key].action === 'Sell')]?.strike &&
+                     `If ${asset || 'the asset'} closes above $${parseFloat(legData[Object.keys(legData).find(key => legData[key].action === 'Sell')].strike).toFixed(2)}, you get max profit.`}
+                  {(strategyType === 'Call Credit Spread' || strategyType === 'Put Debit Spread') && legData[Object.keys(legData).find(key => legData[key].action === 'Sell')]?.strike &&
+                     `If ${asset || 'the asset'} closes below $${parseFloat(legData[Object.keys(legData).find(key => legData[key].action === 'Sell')].strike).toFixed(2)}, you get max profit.`}
+                   {(strategyType === 'Straddle' || strategyType === 'Strangle') && metrics.breakevens.length > 1 &&
+                     `If ${asset || 'the asset'} closes outside the range $${Math.min(...metrics.breakevens).toFixed(2)} - $${Math.max(...metrics.breakevens).toFixed(2)}, your profit is unlimited.`}
+                   {strategyType === 'Iron Condor' && metrics.breakevens.length > 1 &&
+                     `If ${asset || 'the asset'} closes between $${Math.min(...metrics.breakevens).toFixed(2)} and $${Math.max(...metrics.breakevens).toFixed(2)}, you get max profit.`}
+                </p>
+              )}
+              {metrics.maxProfit === 'Unlimited' && (
+                 <p className="text-sm text-green-400 flex items-center mb-1">
+                   <span className="material-icons text-sm mr-2">check_circle</span>
+                   {`Your potential profit is unlimited.`}
+                 </p>
+               )}
+
+              {/* Max Loss Explanation */}
+               {metrics.maxLoss !== 0 && metrics.maxLoss !== 'Unlimited' && (
+                <p className="text-sm text-red-400 flex items-center">
+                   <span className="material-icons text-sm mr-2">cancel</span>
+                   {strategyType === 'Long Call' && metrics.breakevens.length > 0 &&
+                     `If ${asset || 'the asset'} closes below $${metrics.breakevens[0].toFixed(2)}, you get max loss.`}
+                   {strategyType === 'Long Put' && metrics.breakevens.length > 0 &&
+                     `If ${asset || 'the asset'} closes above $${metrics.breakevens[0].toFixed(2)}, you get max loss.`}
+                   {strategyType === 'Covered Call' && legData[1]?.strike &&
+                     `If ${asset || 'the asset'} closes above $${parseFloat(legData[1].strike).toFixed(2)}, you get max loss.`}
+                   {strategyType === 'Cash Secured Put' && legData[1]?.strike &&
+                     `If ${asset || 'the asset'} closes below $${parseFloat(legData[1].strike).toFixed(2)}, you get max loss.`}
+                   {(strategyType === 'Call Debit Spread' || strategyType === 'Put Credit Spread') && legData[Object.keys(legData).find(key => legData[key].action === 'Buy')]?.strike &&
+                     `If ${asset || 'the asset'} closes below $${parseFloat(legData[Object.keys(legData).find(key => legData[key].action === 'Buy')].strike).toFixed(2)}, you get max loss.`}
+                   {(strategyType === 'Call Credit Spread' || strategyType === 'Put Debit Spread') && legData[Object.keys(legData).find(key => legData[key].action === 'Buy')]?.strike &&
+                     `If ${asset || 'the asset'} closes above $${parseFloat(legData[Object.keys(legData).find(key => legData[key].action === 'Buy')].strike).toFixed(2)}, you get max loss.`}
+                   {(strategyType === 'Straddle' || strategyType === 'Strangle') && metrics.breakevens.length > 1 &&
+                     `If ${asset || 'the asset'} closes between $${Math.min(...metrics.breakevens).toFixed(2)} and $${Math.max(...metrics.breakevens).toFixed(2)}, you get max loss.`}
+                   {strategyType === 'Iron Condor' && metrics.breakevens.length > 1 &&
+                     `If ${asset || 'the asset'} closes outside the range $${Math.min(...metrics.breakevens).toFixed(2)} - $${Math.max(...metrics.breakevens).toFixed(2)}, you get max loss.`}
+                </p>
+              )}
+               {metrics.maxLoss === 'Unlimited' && (
+                 <p className="text-sm text-red-400 flex items-center">
+                   <span className="material-icons text-sm mr-2">cancel</span>
+                   {`Your potential loss is unlimited.`}
+                 </p>
+               )}
             </div>
-            <div className="metric-item">
-              <span className="metric-label">Probability of Profit</span>
-              <span className="metric-value">{metrics.probProfit}%</span>
-            </div>
-            <div className="metric-item">
-              <span className="metric-label">ROI on Max Loss</span>
-              <span className={`metric-value ${metrics.roi > 0 ? 'metric-value-positive' : 'metric-value-negative'}`}>
-                {metrics.roi}%
-              </span>
-            </div>
-          </div>
+          )}
+
         </div>
       </div>
     </div>
