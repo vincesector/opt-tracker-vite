@@ -65,6 +65,7 @@ const StrategyForm = () => {
   const [legData, setLegData] = useState({ 1: { action: 'Sell', type: 'Call', strike: '', premium: '', contracts: 1 } });
   const [strategyType, setStrategyType] = useState('');
   const [tradeOutcome, setTradeOutcome] = useState('pending');
+  const [asset, setAsset] = useState(''); // Declare asset state
   const [assetPrice, setAssetPrice] = useState('');
   const [marginRequired, setMarginRequired] = useState('');
   const [metrics, setMetrics] = useState({
@@ -177,6 +178,7 @@ const StrategyForm = () => {
     setLegData({ 1: { action: 'Sell', type: 'Call', strike: '', premium: '', contracts: 1 } });
     setStrategyType('');
     setTradeOutcome('pending');
+    setAsset('');
     setAssetPrice('');
     setMarginRequired('');
     setMetrics({
@@ -264,11 +266,18 @@ const StrategyForm = () => {
             {/* Asset Selection */}
             <div>
               <label htmlFor="asset" className="block text-sm font-medium mb-2 text-[#C9D1D9]">Asset</label>
-              <Input
+              <Select
                 id="asset"
-                placeholder="Enter asset symbol (e.g., AAPL)"
+                name="asset"
+                value={asset}
+                onChange={(e) => setAsset(e.target.value)} // Use the state setter
                 required
-              />
+              >
+                <option value="">Select Asset</option>
+                <option value="BTC">BTC</option>
+                <option value="ETH">ETH</option>
+                <option value="SOL">SOL</option>
+              </Select>
             </div>
             
             {/* Date Fields */}
