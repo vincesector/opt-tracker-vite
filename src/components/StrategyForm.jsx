@@ -3,54 +3,24 @@ import Select from './Select';
 import Input from './Input';
 import DatePicker from './DatePicker';
 import Leg from './Leg';
-import { calculateStrategyMetrics } from '../utils/strategyCalculations';
+import { calculateStrategyMetrics, getSimplifiedExplanation } from '../utils/strategyCalculations';
 import { initChart, updatePayoffChart } from '../utils/chartUtils';
 import { storageService } from '../services/storageService';
 
 /**
- * Detects the type of option strategy based on the legs provided.
- * @param {Array<import('./Leg').LegValues>} legs - An array of leg objects.
- * @returns {string} The detected strategy type (e.g., 'Covered Call', 'Long Call', 'Custom').
- */
-const detectStrategyType = (legs) => {
-  if (legs.length === 1) {
-    const leg = legs[0];
-    if (leg.action === 'Buy' && leg.type === 'Call') return 'Long Call';
-    if (leg.action === 'Buy' && leg.type === 'Put') return 'Long Put';
-    if (leg.action === 'Sell' && leg.type === 'Call') return 'Covered Call';
-    if (leg.action === 'Sell' && leg.type === 'Put') return 'Cash Secured Put';
-  }
-  if (legs.length === 2) {
-    const [leg1, leg2] = legs;
-    if (leg1.type === leg2.type) {
-      if (leg1.type === 'Call') {
-        return (leg1.action === 'Buy' && leg2.action === 'Sell') ? 'Call Debit Spread' : 'Call Credit Spread';
-      }
-      if (leg1.type === 'Put') {
-        return (leg1.action === 'Buy' && leg2.action === 'Sell') ? 'Put Debit Spread' : 'Put Credit Spread';
-      }
-    }
-    if (leg1.type !== leg2.type && leg1.strike === leg2.strike) {
-      return 'Straddle';
-    }
-    if (leg1.type !== leg2.type && leg1.strike !== leg2.strike) {
-      return 'Strangle';
-    }
-  }
-  if (legs.length === 4) {
-    return 'Iron Condor';
-  }
-  return 'Custom';
-};
-
-/**
  * @typedef {object} StrategyMetrics
  * @property {number} netPremium - The net premium received or paid.
- * @property {number} maxProfit - The maximum potential profit.
- * @property {number} maxLoss - The maximum potential loss.
+ * @property {number | 'Unlimited'} maxProfit - The maximum potential profit.
+ * @property {number | 'Unlimited'} maxLoss - The maximum potential loss.
  * @property {number[]} breakevens - An array of breakeven points.
- * @property {number} probProfit - The probability of profit (as a percentage).
+ * @property {string} probProfit - The probability of profit (as a percentage, or 'N/A').
  * @property {number} roi - The Return on Investment (as a percentage).
+ * @property {string} strategyName - The detected name of the strategy.
+ * @property {string} strategyType - The detected type of the strategy (e.g., 'Vertical Spread', 'Condor').
+ * @property {string} direction - The direction of the strategy ('Long' or 'Short').
+ * @property {boolean} isCredit - True if the strategy is a credit strategy.
+ * @property {boolean} isReverse - True if the strategy is a reverse version.
+ * @property {string} optionType - The type of options used ('Calls', 'Puts', or 'Mixed').
  */
 
 /**
@@ -63,29 +33,49 @@ const StrategyForm = () => {
   const chartInstanceRef = useRef(null);
   const [legs, setLegs] = useState([{ id: 1 }]);
   const [legData, setLegData] = useState({ 1: { action: 'Sell', type: 'Call', strike: '', premium: '', contracts: 1 } });
-  const [strategyType, setStrategyType] = useState('');
+  const [strategyName, setStrategyName] = useState(''); // Changed from strategyType
   const [tradeOutcome, setTradeOutcome] = useState('pending');
-  const [asset, setAsset] = useState(''); // Declare asset state
+  const [asset, setAsset] = useState('');
   const [assetPrice, setAssetPrice] = useState('');
   const [marginRequired, setMarginRequired] = useState('');
   const [metrics, setMetrics] = useState({
     netPremium: 0,
     maxProfit: 0,
     maxLoss: 0,
-    breakevens: []
+    breakevens: [],
+    probProfit: 'N/A',
+    roi: 0,
+    strategyName: 'N/A',
+    strategyType: 'N/A',
+    direction: 'N/A',
+    isCredit: false,
+    isReverse: false,
+    optionType: 'N/A',
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
   const calculateMetrics = () => {
-    if (Object.keys(legData).length > 0 && assetPrice && marginRequired) {
-      const newMetrics = calculateStrategyMetrics(
-        Object.values(legData),
-        parseFloat(assetPrice),
-        parseFloat(marginRequired)
-      );
-      setMetrics(newMetrics);
+    // Ensure there's at least one leg to calculate metrics for
+    if (Object.keys(legData).length === 0) {
+      setMetrics({
+        netPremium: 0, maxProfit: 0, maxLoss: 0, breakevens: [], probProfit: 'N/A', roi: 0,
+        strategyName: 'N/A', strategyType: 'N/A', direction: 'N/A', isCredit: false, isReverse: false, optionType: 'N/A',
+      });
+      setStrategyName('N/A');
+      return;
     }
+
+    const currentAssetPrice = parseFloat(assetPrice);
+    const currentMarginRequired = parseFloat(marginRequired);
+
+    const newMetrics = calculateStrategyMetrics(
+      Object.values(legData),
+      isNaN(currentAssetPrice) ? undefined : currentAssetPrice,
+      isNaN(currentMarginRequired) ? undefined : currentMarginRequired
+    );
+    setMetrics(newMetrics);
+    setStrategyName(newMetrics.strategyName); // Update strategyName state
   };
 
   /**
@@ -102,7 +92,6 @@ const StrategyForm = () => {
    */
   useEffect(() => {
     if (Object.keys(legData).length > 0) {
-      setStrategyType(detectStrategyType(Object.values(legData)));
       calculateMetrics();
     }
   }, [legData, assetPrice, marginRequired]);
@@ -149,7 +138,7 @@ const StrategyForm = () => {
    */
   const addLeg = () => {
     if (legs.length < 4) {
-      const newId = legs.length + 1;
+      const newId = legs.length + 1; // Use the current length for leg numbering
       setLegs([...legs, { id: newId }]);
       setLegData(prev => ({
         ...prev,
@@ -163,20 +152,24 @@ const StrategyForm = () => {
    * @param {string | number} legId - The ID of the leg to remove.
    */
   const removeLeg = (legId) => {
-    if (legs.length > 1) {
-      setLegs(legs.filter(leg => leg.id !== legId));
-      setLegData(prev => {
-        const newData = { ...prev };
-        delete newData[legId];
-        return newData;
-      });
+    const updatedLegs = legs.filter(leg => leg.id !== legId);
+    const updatedLegData = { ...legData };
+    delete updatedLegData[legId];
+
+      if (updatedLegs.length === 0) {
+        // If all legs are removed, keep the button visible
+        setLegs([{ id: 1 }]);
+        setLegData({ 1: { action: 'Sell', type: 'Call', strike: '', premium: '', contracts: 1 } });
+    } else {
+      setLegs(updatedLegs);
+      setLegData(updatedLegData);
     }
   };
 
   const resetForm = () => {
     setLegs([{ id: 1 }]);
     setLegData({ 1: { action: 'Sell', type: 'Call', strike: '', premium: '', contracts: 1 } });
-    setStrategyType('');
+    setStrategyName(''); // Reset strategyName
     setTradeOutcome('pending');
     setAsset('');
     setAssetPrice('');
@@ -185,7 +178,15 @@ const StrategyForm = () => {
       netPremium: 0,
       maxProfit: 0,
       maxLoss: 0,
-      breakevens: []
+      breakevens: [],
+      probProfit: 'N/A',
+      roi: 0,
+      strategyName: 'N/A',
+      strategyType: 'N/A',
+      direction: 'N/A',
+      isCredit: false,
+      isReverse: false,
+      optionType: 'N/A',
     });
     setError(null);
   };
@@ -218,7 +219,7 @@ const StrategyForm = () => {
         asset: e.target.asset.value,
         open_date: e.target['open-date'].value,
         close_date: e.target['close-date'].value || null,
-        strategy_type: strategyType,
+        strategy_type: metrics.strategyName, // Use metrics.strategyName
         legs: Object.values(legData),
         margin_required: parseFloat(marginRequired),
         asset_price: parseFloat(assetPrice),
@@ -308,7 +309,7 @@ const StrategyForm = () => {
                 placeholder="e.g., Covered Call, Straddle"
                 readOnly
                 className="bg-[#21262D] cursor-not-allowed"
-                value={strategyType} // Bind value to state
+                value={metrics.strategyName} // Bind value to metrics.strategyName
               />
             </div>
 
@@ -319,23 +320,24 @@ const StrategyForm = () => {
                   key={id}
                   id={id}
                   isFirst={index === 0}
-                  onDelete={() => handleRemoveLeg(id)}
+                  onDelete={() => removeLeg(id)}
                   onChange={handleLegChange}
                   values={values}
                 />
               ))}
 
               {/* Add Leg Button */}
-              {legs.length < 4 && (
-                <button
-                  type="button"
-                  onClick={addLeg}
-                  className="inline-flex items-center space-x-2 px-4 py-2 bg-[#21262D] text-[#C9D1D9] rounded-lg border border-[#30363D] hover:bg-[#30363D] transition-colors w-full justify-center"
-                >
-                  <span className="material-icons text-base">add_circle_outline</span>
-                  <span>Add Another Leg</span>
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={addLeg}
+                disabled={legs.length >= 4} // Disable if 4 or more legs
+                className={`inline-flex items-center space-x-2 px-4 py-2 bg-[#21262D] text-[#C9D1D9] rounded-lg border border-[#30363D] transition-colors w-full justify-center ${
+                  legs.length >= 4 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[#30363D]'
+                }`}
+              >
+                <span className="material-icons text-base">add_circle_outline</span>
+                <span>Add Another Leg</span>
+              </button>
             </div>
 
             {/* Margin and Asset Price */}
@@ -480,67 +482,25 @@ const StrategyForm = () => {
           </div>
 
           {/* Simplified Explanation Callout */}
-          {(metrics.maxProfit !== 0 || metrics.maxLoss !== 0 || metrics.maxProfit === 'Unlimited' || metrics.maxLoss === 'Unlimited') && strategyType !== 'Custom' && (
+          {(metrics.maxProfitExplanation || metrics.maxLossExplanation) && metrics.strategyType !== 'Custom' && (
             <div className="p-4 bg-[#1f242c] border-l-4 border-emerald-400 rounded-r-md mb-6">
               <p className="text-sm text-[#C9D1D9] mb-2">Simplified Explanation:</p>
               
               {/* Max Profit Explanation */}
-              {metrics.maxProfit !== 0 && metrics.maxProfit !== 'Unlimited' && (
+              {metrics.maxProfitExplanation && (
                 <p className="text-sm text-green-400 flex items-center mb-1">
                   <span className="material-icons text-sm mr-2">check_circle</span>
-                  {strategyType === 'Long Call' && metrics.breakevens.length > 0 &&
-                    `If ${asset || 'the asset'} closes above $${metrics.breakevens[0].toFixed(2)}, you get max profit.`}
-                  {strategyType === 'Long Put' && metrics.breakevens.length > 0 &&
-                    `If ${asset || 'the asset'} closes below $${metrics.breakevens[0].toFixed(2)}, you get max profit.`}
-                  {strategyType === 'Covered Call' && legData[1]?.strike &&
-                     `If ${asset || 'the asset'} closes below $${parseFloat(legData[1].strike).toFixed(2)}, you get max profit.`}
-                  {strategyType === 'Cash Secured Put' && legData[1]?.strike &&
-                     `If ${asset || 'the asset'} closes above $${parseFloat(legData[1].strike).toFixed(2)}, you get max profit.`}
-                  {(strategyType === 'Call Debit Spread' || strategyType === 'Put Credit Spread') && legData[Object.keys(legData).find(key => legData[key].action === 'Sell')]?.strike &&
-                     `If ${asset || 'the asset'} closes above $${parseFloat(legData[Object.keys(legData).find(key => legData[key].action === 'Sell')].strike).toFixed(2)}, you get max profit.`}
-                  {(strategyType === 'Call Credit Spread' || strategyType === 'Put Debit Spread') && legData[Object.keys(legData).find(key => legData[key].action === 'Sell')]?.strike &&
-                     `If ${asset || 'the asset'} closes below $${parseFloat(legData[Object.keys(legData).find(key => legData[key].action === 'Sell')].strike).toFixed(2)}, you get max profit.`}
-                   {(strategyType === 'Straddle' || strategyType === 'Strangle') && metrics.breakevens.length > 1 &&
-                     `If ${asset || 'the asset'} closes outside the range $${Math.min(...metrics.breakevens).toFixed(2)} - $${Math.max(...metrics.breakevens).toFixed(2)}, your profit is unlimited.`}
-                   {strategyType === 'Iron Condor' && metrics.breakevens.length > 1 &&
-                     `If ${asset || 'the asset'} closes between $${Math.min(...metrics.breakevens).toFixed(2)} and $${Math.max(...metrics.breakevens).toFixed(2)}, you get max profit.`}
+                  {metrics.maxProfitExplanation}
                 </p>
               )}
-              {metrics.maxProfit === 'Unlimited' && (
-                 <p className="text-sm text-green-400 flex items-center mb-1">
-                   <span className="material-icons text-sm mr-2">check_circle</span>
-                   {`Your potential profit is unlimited.`}
-                 </p>
-               )}
 
               {/* Max Loss Explanation */}
-               {metrics.maxLoss !== 0 && metrics.maxLoss !== 'Unlimited' && (
+              {metrics.maxLossExplanation && (
                 <p className="text-sm text-red-400 flex items-center">
-                   <span className="material-icons text-sm mr-2">cancel</span>
-                   {strategyType === 'Long Call' && metrics.breakevens.length > 0 &&
-                     `If ${asset || 'the asset'} closes below $${metrics.breakevens[0].toFixed(2)}, you get max loss.`}
-                   {strategyType === 'Long Put' && metrics.breakevens.length > 0 &&
-                     `If ${asset || 'the asset'} closes above $${metrics.breakevens[0].toFixed(2)}, you get max loss.`}
-                   {strategyType === 'Covered Call' && legData[1]?.strike &&
-                     `If ${asset || 'the asset'} closes above $${parseFloat(legData[1].strike).toFixed(2)}, you get max loss.`}
-                   {strategyType === 'Cash Secured Put' && legData[1]?.strike &&
-                     `If ${asset || 'the asset'} closes below $${parseFloat(legData[1].strike).toFixed(2)}, you get max loss.`}
-                   {(strategyType === 'Call Debit Spread' || strategyType === 'Put Credit Spread') && legData[Object.keys(legData).find(key => legData[key].action === 'Buy')]?.strike &&
-                     `If ${asset || 'the asset'} closes below $${parseFloat(legData[Object.keys(legData).find(key => legData[key].action === 'Buy')].strike).toFixed(2)}, you get max loss.`}
-                   {(strategyType === 'Call Credit Spread' || strategyType === 'Put Debit Spread') && legData[Object.keys(legData).find(key => legData[key].action === 'Buy')]?.strike &&
-                     `If ${asset || 'the asset'} closes above $${parseFloat(legData[Object.keys(legData).find(key => legData[key].action === 'Buy')].strike).toFixed(2)}, you get max loss.`}
-                   {(strategyType === 'Straddle' || strategyType === 'Strangle') && metrics.breakevens.length > 1 &&
-                     `If ${asset || 'the asset'} closes between $${Math.min(...metrics.breakevens).toFixed(2)} and $${Math.max(...metrics.breakevens).toFixed(2)}, you get max loss.`}
-                   {strategyType === 'Iron Condor' && metrics.breakevens.length > 1 &&
-                     `If ${asset || 'the asset'} closes outside the range $${Math.min(...metrics.breakevens).toFixed(2)} - $${Math.max(...metrics.breakevens).toFixed(2)}, you get max loss.`}
+                  <span className="material-icons text-sm mr-2">cancel</span>
+                  {metrics.maxLossExplanation}
                 </p>
               )}
-               {metrics.maxLoss === 'Unlimited' && (
-                 <p className="text-sm text-red-400 flex items-center">
-                   <span className="material-icons text-sm mr-2">cancel</span>
-                   {`Your potential loss is unlimited.`}
-                 </p>
-               )}
             </div>
           )}
 

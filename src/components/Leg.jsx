@@ -50,7 +50,7 @@ const Leg = ({ id, isFirst, onDelete, onChange, values }) => {
     <div className="leg-container">
       <div className="leg-header">
         <h3 className="text-sm font-medium text-[#C9D1D9]">
-          {isFirst ? 'Leg 1' : `Leg ${id} (Optional)`}
+          {`Leg ${String.fromCharCode(64 + parseInt(id))}`}
         </h3>
         {!isFirst && (
           <button 
