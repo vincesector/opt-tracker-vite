@@ -235,7 +235,7 @@ const SavedStrategies = () => {
   }
 
   return (
-    <div className="card p-6">
+    <div className="card p-6 rounded-xl">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-semibold text-emerald-400 flex items-center">
           <span className="material-icons mr-2">history</span>
@@ -275,25 +275,25 @@ const SavedStrategies = () => {
           </thead>
           <tbody>
             {strategies.map((strategy) => (
-              <tr key={strategy.id}>
-                <td className="table-cell">{strategy.asset}</td>
-                <td className="table-cell">{strategy.strategy_type}</td>
-                <td className="table-cell">{formatDate(strategy.open_date)}</td>
-                <td className="table-cell">{formatDate(strategy.close_date)}</td>
-                <td className="table-cell">{strategy.legs.length}</td>
-                <td className="table-cell text-right">
+              <tr key={strategy.id} className="hover:bg-gray-700">
+                <td className="table-cell py-3 px-4">{strategy.asset}</td>
+                <td className="table-cell py-3 px-4">{strategy.strategy_type}</td>
+                <td className="table-cell py-3 px-4">{formatDate(strategy.open_date)}</td>
+                <td className="table-cell py-3 px-4">{formatDate(strategy.close_date)}</td>
+                <td className="table-cell py-3 px-4">{strategy.legs.length}</td>
+                <td className="table-cell py-3 px-4 text-right">
                   {strategy.legs.reduce((sum, leg) => sum + parseInt(leg.contracts), 0)}
                 </td>
-                <td className="table-cell text-right">${strategy.net_premium}</td>
-                <td className="table-cell text-right">
+                <td className="table-cell py-3 px-4 text-right">${strategy.net_premium}</td>
+                <td className="table-cell py-3 px-4 text-right">
                   {strategy.max_profit === 'Unlimited' ? 'Unlimited' : `$${strategy.max_profit}`}
                 </td>
-                <td className="table-cell text-right">
+                <td className="table-cell py-3 px-4 text-right">
                   {strategy.max_loss === 'Unlimited' ? 'Unlimited' : `-$${Math.abs(strategy.max_loss)}`}
                 </td>
-                <td className="table-cell text-right">${strategy.margin_required}</td>
-                <td className="table-cell text-right">${strategy.asset_price}</td>
-                <td className="table-cell text-center">
+                <td className="table-cell py-3 px-4 text-right">${strategy.margin_required}</td>
+                <td className="table-cell py-3 px-4 text-right">${strategy.asset_price}</td>
+                <td className="table-cell py-3 px-4 text-center">
                   <span className={`tag ${
                     strategy.trade_outcome === 'profit' ? 'tag-profit' :
                     strategy.trade_outcome === 'loss' ? 'tag-loss' :
@@ -302,14 +302,14 @@ const SavedStrategies = () => {
                     {strategy.trade_outcome.charAt(0).toUpperCase() + strategy.trade_outcome.slice(1)}
                   </span>
                 </td>
-                <td className="table-cell text-right">
+                <td className="table-cell py-3 px-4 text-right">
                   {strategy.trade_outcome !== 'pending' ? (
                     <span className={strategy.trade_outcome === 'loss' ? 'text-red-400' : 'text-green-400'}>
                       {strategy.trade_outcome === 'loss' ? '-' : ''}${Math.abs(strategy.pnl).toFixed(2)}
                     </span>
                   ) : ''}
                 </td>
-                <td className="table-cell text-right">
+                <td className="table-cell py-3 px-4 text-right">
                   {strategy.trade_outcome === 'pending' ? (
                     <span className="text-[#8B949E]">
                       Max: {((strategy.max_profit / strategy.margin_required) * 100).toFixed(2)}%
@@ -320,7 +320,7 @@ const SavedStrategies = () => {
                     </span>
                   )}
                 </td>
-                <td className="table-cell text-center">
+                <td className="table-cell py-3 px-4 text-center">
                   <div className="flex justify-center space-x-2">
                     <button
                       onClick={() => setEditingStrategy(strategy)}

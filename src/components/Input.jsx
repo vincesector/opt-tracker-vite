@@ -46,7 +46,7 @@ const Input = React.forwardRef(({
       <input
         id={inputId}
         type={type}
-        className={`input-field placeholder-[#8B949E] ${className || ''}`}
+        className={`input-field placeholder-[#8B949E] focus:ring focus:ring-green-500 focus:ring-offset-2 ${className || ''}`}
         step={type === 'number' ? '0.01' : undefined}
         ref={ref}
         aria-label={accessibilityLabel}

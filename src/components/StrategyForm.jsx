@@ -253,7 +253,10 @@ const StrategyForm = () => {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
       <div className="lg:col-span-2">
-        <form onSubmit={handleSubmit} className="card p-6">
+        <form
+          onSubmit={handleSubmit}
+          className="card p-6 bg-[#161B22] shadow-xl rounded-xl"
+        >
           {error && (
             <div className="mb-4 p-3 bg-red-900/50 border border-red-700 rounded text-red-400">
               {error}
@@ -265,8 +268,13 @@ const StrategyForm = () => {
           </h2>
           <div className="space-y-6">
             {/* Asset Selection */}
-            <div>
-              <label htmlFor="asset" className="block text-sm font-medium mb-2 text-[#C9D1D9]">Asset</label>
+            <div className="border-b border-gray-700 pb-4">
+              <label
+                htmlFor="asset"
+                className="block text-sm font-medium mb-2 text-[#C9D1D9]"
+              >
+                Asset
+              </label>
               <Select
                 id="asset"
                 name="asset"
@@ -280,29 +288,37 @@ const StrategyForm = () => {
                 <option value="SOL">SOL</option>
               </Select>
             </div>
-            
+
             {/* Date Fields */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-b border-gray-700 pb-4">
               <div>
-                <label htmlFor="open-date" className="block text-sm font-medium mb-2 text-[#C9D1D9]">Open Date</label>
-                <DatePicker
-                  id="open-date"
-                  aria-label="Open Date"
-                  required
-                />
+                <label
+                  htmlFor="open-date"
+                  className="block text-sm font-medium mb-2 text-[#C9D1D9]"
+                >
+                  Open Date
+                </label>
+                <DatePicker id="open-date" aria-label="Open Date" required />
               </div>
               <div>
-                <label htmlFor="close-date" className="block text-sm font-medium mb-2 text-[#C9D1D9]">Close Date</label>
-                <DatePicker
-                  id="close-date"
-                  aria-label="Close Date (Optional)"
-                />
+                <label
+                  htmlFor="close-date"
+                  className="block text-sm font-medium mb-2 text-[#C9D1D9]"
+                >
+                  Close Date
+                </label>
+                <DatePicker id="close-date" aria-label="Close Date (Optional)" />
               </div>
             </div>
 
             {/* Strategy Type */}
-            <div>
-              <label htmlFor="strategy-type" className="block text-sm font-medium mb-2 text-[#C9D1D9]">Strategy Type</label>
+            <div className="border-b border-gray-700 pb-4">
+              <label
+                htmlFor="strategy-type"
+                className="block text-sm font-medium mb-2 text-[#C9D1D9]"
+              >
+                Strategy Type
+              </label>
               <Input
                 type="text"
                 id="strategy-type"
@@ -314,9 +330,9 @@ const StrategyForm = () => {
             </div>
 
             {/* Legs */}
-            <div className="space-y-4">
+            <div className="space-y-4 border-b border-gray-700 pb-4">
               {Object.entries(legData).map(([id, values], index) => (
-                <Leg 
+                <Leg
                   key={id}
                   id={id}
                   isFirst={index === 0}
@@ -332,7 +348,9 @@ const StrategyForm = () => {
                 onClick={addLeg}
                 disabled={legs.length >= 4} // Disable if 4 or more legs
                 className={`inline-flex items-center space-x-2 px-4 py-2 bg-[#21262D] text-[#C9D1D9] rounded-lg border border-[#30363D] transition-colors w-full justify-center ${
-                  legs.length >= 4 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[#30363D]'
+                  legs.length >= 4
+                    ? "opacity-50 cursor-not-allowed"
+                    : "hover:bg-[#30363D]"
                 }`}
               >
                 <span className="material-icons text-base">add_circle_outline</span>
@@ -341,9 +359,14 @@ const StrategyForm = () => {
             </div>
 
             {/* Margin and Asset Price */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-b border-gray-700 pb-4">
               <div>
-                <label htmlFor="margin-required" className="block text-sm font-medium mb-2 text-[#C9D1D9]">Margin Required ($)</label>
+                <label
+                  htmlFor="margin-required"
+                  className="block text-sm font-medium mb-2 text-[#C9D1D9]"
+                >
+                  Margin Required ($)
+                </label>
                 <Input
                   type="number"
                   id="margin-required"
@@ -353,7 +376,12 @@ const StrategyForm = () => {
                 />
               </div>
               <div>
-                <label htmlFor="asset-price" className="block text-sm font-medium mb-2 text-[#C9D1D9]">Asset Price at Entry ($)</label>
+                <label
+                  htmlFor="asset-price"
+                  className="block text-sm font-medium mb-2 text-[#C9D1D9]"
+                >
+                  Asset Price at Entry ($)
+                </label>
                 <Input
                   type="number"
                   id="asset-price"
@@ -365,11 +393,16 @@ const StrategyForm = () => {
             </div>
 
             {/* Trade Outcome */}
-            <div className="space-y-4">
+            <div className="space-y-4 border-b border-gray-700 pb-4">
               <div>
-                <label htmlFor="trade-outcome" className="block text-sm font-medium mb-2 text-[#C9D1D9]">Trade Outcome</label>
-                <Select 
-                  name="trade-outcome" 
+                <label
+                  htmlFor="trade-outcome"
+                  className="block text-sm font-medium mb-2 text-[#C9D1D9]"
+                >
+                  Trade Outcome
+                </label>
+                <Select
+                  name="trade-outcome"
                   id="trade-outcome"
                   value={tradeOutcome}
                   onChange={(e) => setTradeOutcome(e.target.value)}
@@ -379,10 +412,15 @@ const StrategyForm = () => {
                   <option value="loss">Loss</option>
                 </Select>
               </div>
-              {tradeOutcome !== 'pending' && (
+              {tradeOutcome !== "pending" && (
                 <div>
-                  <label htmlFor="pnl-amount" className="block text-sm font-medium mb-2 text-[#C9D1D9]">
-                    {tradeOutcome === 'profit' ? 'Profit Amount ($)' : 'Loss Amount ($)'}
+                  <label
+                    htmlFor="pnl-amount"
+                    className="block text-sm font-medium mb-2 text-[#C9D1D9]"
+                  >
+                    {tradeOutcome === "profit"
+                      ? "Profit Amount ($)"
+                      : "Loss Amount ($)"}
                   </label>
                   <Input
                     type="number"
@@ -395,13 +433,14 @@ const StrategyForm = () => {
                 </div>
               )}
             </div>
-          </div>          {/* Submit Button */}
+          </div>{" "}
+          {/* Submit Button */}
           <div className="flex justify-end mt-6">
             <button
               type="submit"
               disabled={saving}
-              className={`btn btn-primary px-6 py-2 flex items-center space-x-2 ${
-                saving ? 'opacity-50 cursor-not-allowed' : ''
+              className={`btn btn-primary px-6 py-2 flex items-center space-x-2 bg-gradient-to-r from-green-400 to-emerald-400 hover:opacity-90 transition-opacity ${
+                saving ? "opacity-50 cursor-not-allowed" : ""
               }`}
             >
               {saving ? (
@@ -420,12 +459,12 @@ const StrategyForm = () => {
         </form>
       </div>
       <div className="lg:col-span-3">
-        <div className="card p-6 flex flex-col h-full">
+        <div className="card p-6 flex flex-col h-full bg-[#161B22] shadow-xl rounded-xl">
           <h2 className="text-xl font-semibold mb-6 text-emerald-400 flex items-center">
             <span className="material-icons mr-2">analytics</span>
             Strategy Analysis
           </h2>
-          
+
           <div className="chart-container mb-6">
             <canvas ref={chartRef}></canvas>
           </div>
@@ -435,75 +474,128 @@ const StrategyForm = () => {
             {/* Net Premium Card */}
             <div className="stat-card flex flex-col justify-between">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-[#8B949E]">Net Premium <span className="material-icons text-xs cursor-help" title="Total premium received minus total premium paid.">info</span></span>
+                <span className="text-xs font-medium text-[#8B949E]">
+                  Net Premium{" "}
+                  <span
+                    className="material-icons text-xs cursor-help"
+                    title="Total premium received minus total premium paid."
+                  >
+                    info
+                  </span>
+                </span>
                 {/* Placeholder for sparkline - requires a charting library */}
                 <span className="text-green-400">~</span>
               </div>
               <span className="text-lg font-semibold">
-                ${typeof metrics.netPremium === 'number' ? metrics.netPremium.toFixed(2) : metrics.netPremium}
+                $
+                {typeof metrics.netPremium === "number"
+                  ? metrics.netPremium.toFixed(2)
+                  : metrics.netPremium}
               </span>
             </div>
 
             {/* Max Profit Card */}
             <div className="stat-card flex flex-col justify-between">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-[#8B949E]">Max Profit <span className="material-icons text-xs cursor-help" title="The maximum potential gain from the strategy.">info</span></span>
+                <span className="text-xs font-medium text-[#8B949E]">
+                  Max Profit{" "}
+                  <span
+                    className="material-icons text-xs cursor-help"
+                    title="The maximum potential gain from the strategy."
+                  >
+                    info
+                  </span>
+                </span>
                 <span className="material-icons text-green-400">trending_up</span>
               </div>
-              <span className={`text-lg font-semibold ${metrics.maxProfit > 0 ? 'metric-value-positive' : ''}`}>
-                {metrics.maxProfit === 'Unlimited' ? 'Unlimited' : `$${metrics.maxProfit.toFixed(2)}`}
+              <span
+                className={`text-lg font-semibold ${
+                  metrics.maxProfit > 0 ? "metric-value-positive" : ""
+                }`}
+              >
+                {metrics.maxProfit === "Unlimited"
+                  ? "Unlimited"
+                  : `$${metrics.maxProfit.toFixed(2)}`}
               </span>
             </div>
 
             {/* Max Loss Card */}
             <div className="stat-card flex flex-col justify-between">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-[#8B949E]">Max Loss <span className="material-icons text-xs cursor-help" title="The maximum potential loss from the strategy.">info</span></span>
+                <span className="text-xs font-medium text-[#8B949E]">
+                  Max Loss{" "}
+                  <span
+                    className="material-icons text-xs cursor-help"
+                    title="The maximum potential loss from the strategy."
+                  >
+                    info
+                  </span>
+                </span>
                 <span className="material-icons text-red-400">trending_down</span>
               </div>
-              <span className={`text-lg font-semibold ${typeof metrics.maxLoss === 'number' ? 'metric-value-negative' : ''}`}>
-                {metrics.maxLoss === 'Unlimited' ? 'Unlimited' : `-$${Math.abs(metrics.maxLoss).toFixed(2)}`}
+              <span
+                className={`text-lg font-semibold ${
+                  typeof metrics.maxLoss === "number" ? "metric-value-negative" : ""
+                }`}
+              >
+                {metrics.maxLoss === "Unlimited"
+                  ? "Unlimited"
+                  : `-$${Math.abs(metrics.maxLoss).toFixed(2)}`}
               </span>
             </div>
 
             {/* Breakeven Range Card */}
             <div className="stat-card flex flex-col justify-between">
-               <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-[#8B949E]">Breakeven Range <span className="material-icons text-xs cursor-help" title="The price(s) at which the strategy results in neither a profit nor a loss.">info</span></span>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-[#8B949E]">
+                  Breakeven Range{" "}
+                  <span
+                    className="material-icons text-xs cursor-help"
+                    title="The price(s) at which the strategy results in neither a profit nor a loss."
+                  >
+                    info
+                  </span>
+                </span>
                 {/* Placeholder for mini bar/chart - requires a charting library */}
-                 <span className="text-blue-400">--</span>
+                <span className="text-blue-400">--</span>
               </div>
               <span className="text-lg font-semibold">
-                {metrics.breakevens.length > 0 ? 
-                  `$${metrics.breakevens.map(b => b.toFixed(2)).join(' - $')}` 
-                  : 'N/A'}
+                {metrics.breakevens.length > 0
+                  ? `$${metrics.breakevens
+                      .map((b) => b.toFixed(2))
+                      .join(" - $")}`
+                  : "N/A"}
               </span>
             </div>
           </div>
 
           {/* Simplified Explanation Callout */}
-          {(metrics.maxProfitExplanation || metrics.maxLossExplanation) && metrics.strategyType !== 'Custom' && (
-            <div className="p-4 bg-[#1f242c] border-l-4 border-emerald-400 rounded-r-md mb-6">
-              <p className="text-sm text-[#C9D1D9] mb-2">Simplified Explanation:</p>
-              
-              {/* Max Profit Explanation */}
-              {metrics.maxProfitExplanation && (
-                <p className="text-sm text-green-400 flex items-center mb-1">
-                  <span className="material-icons text-sm mr-2">check_circle</span>
-                  {metrics.maxProfitExplanation}
+          {(metrics.maxProfitExplanation || metrics.maxLossExplanation) &&
+            metrics.strategyType !== "Custom" && (
+              <div className="p-4 bg-[#1f242c] border-l-4 border-emerald-400 rounded-r-md mb-6">
+                <p className="text-sm text-[#C9D1D9] mb-2">
+                  Simplified Explanation:
                 </p>
-              )}
 
-              {/* Max Loss Explanation */}
-              {metrics.maxLossExplanation && (
-                <p className="text-sm text-red-400 flex items-center">
-                  <span className="material-icons text-sm mr-2">cancel</span>
-                  {metrics.maxLossExplanation}
-                </p>
-              )}
-            </div>
-          )}
+                {/* Max Profit Explanation */}
+                {metrics.maxProfitExplanation && (
+                  <p className="text-sm text-green-400 flex items-center mb-1">
+                    <span className="material-icons text-sm mr-2">
+                      check_circle
+                    </span>
+                    {metrics.maxProfitExplanation}
+                  </p>
+                )}
 
+                {/* Max Loss Explanation */}
+                {metrics.maxLossExplanation && (
+                  <p className="text-sm text-red-400 flex items-center">
+                    <span className="material-icons text-sm mr-2">cancel</span>
+                    {metrics.maxLossExplanation}
+                  </p>
+                )}
+              </div>
+            )}
         </div>
       </div>
     </div>

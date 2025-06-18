@@ -52,7 +52,7 @@ function App() {
 
   return (
     <div className="min-h-screen bg-[#0D1117] text-[#C9D1D9] flex flex-col">
-      <header className="bg-[#161B22] border-b border-[#30363D] sticky top-0 z-50">
+      <header className="bg-[#161B22] border-b border-[#30363D] shadow-md sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
@@ -60,17 +60,17 @@ function App() {
               <a href="#" className="text-xl font-semibold text-emerald-400">OptionTrackr</a>
             </div>
             <nav className="hidden md:flex space-x-4">
-              <a href="#" className="text-gray-300 hover:bg-[#21262D] hover:text-white px-3 py-2 rounded-md text-sm font-medium">Dashboard</a>
-              <a href="#" className="text-gray-300 hover:bg-[#21262D] hover:text-white px-3 py-2 rounded-md text-sm font-medium">Tracker</a>
-              <a href="#" className="text-gray-300 hover:bg-[#21262D] hover:text-white px-3 py-2 rounded-md text-sm font-medium">Learn</a>
-              <a href="#" className="text-gray-300 hover:bg-[#21262D] hover:text-white px-3 py-2 rounded-md text-sm font-medium">Contact Us</a>
+              <a href="#" className="text-gray-300 hover:text-emerald-400 px-3 py-2 rounded-md text-sm font-medium">Dashboard</a>
+              <a href="#" className="text-gray-300 hover:text-emerald-400 px-3 py-2 rounded-md text-sm font-medium">Tracker</a>
+              <a href="#" className="text-gray-300 hover:text-emerald-400 px-3 py-2 rounded-md text-sm font-medium">Learn</a>
+              <a href="#" className="text-gray-300 hover:text-emerald-400 px-3 py-2 rounded-md text-sm font-medium">Contact Us</a>
             </nav>
             <div className="flex items-center space-x-3">
               <button className="text-gray-300 hover:text-white">
                 <span className="material-icons">notifications</span>
               </button>
               <a href="#" className="text-sm font-medium text-gray-300 hover:text-emerald-400">Login</a>
-              <a href="#" className="btn btn-primary py-1.5 px-3 text-sm">Sign Up</a>
+              <a href="#" className="btn btn-primary py-1.5 px-3 text-sm hover:opacity-90">Sign Up</a>
             </div>
             <div className="md:hidden flex items-center">
               <button className="btn btn-secondary p-2">
@@ -84,10 +84,10 @@ function App() {
       <main className="flex-grow p-4 lg:p-8">
         <div className="max-w-7xl mx-auto space-y-8">
           {/* Strategy Form and Analysis Grid */}
-          <StrategyForm />
+          <StrategyForm className="rounded-xl" />
 
           {/* Statistics Card */}
-          <div className="card p-4">
+          <div className="card p-4 rounded-xl">
             <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm items-center">
               <div className="flex-grow flex flex-wrap gap-x-6 gap-y-2 items-center">
                 <span className="flex items-center">
@@ -123,11 +123,11 @@ function App() {
           </div>
 
           {/* Saved Strategies Table */}
-          <SavedStrategies />
+          <SavedStrategies className="rounded-xl glass-card fade-in-up" />
         </div>
       </main>
 
-      <footer className="bg-[#161B22] border-t border-[#30363D] mt-auto">
+      <footer className="bg-[#161B22] border-t border-[#30363D] mt-auto glass-card fade-in-up">
         <div className="max-w-7xl mx-auto py-8 px-4 lg:px-8">
           <div className="flex flex-col md:flex-row justify-between items-center text-sm text-gray-400">
             <p>© 2024 OptionTrackr. All rights reserved.</p>

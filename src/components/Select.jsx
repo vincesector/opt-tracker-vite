@@ -44,7 +44,7 @@ const Select = React.forwardRef(({
       <select
         id={selectId}
         ref={ref}
-        className={`select-field ${className || ''}`}
+        className={`select-field focus:ring focus:ring-green-500 focus:ring-offset-2 ${className || ''}`}
         aria-label={accessibilityLabel}
         {...props}
       >
