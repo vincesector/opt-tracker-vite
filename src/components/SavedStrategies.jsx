@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { storageService } from '../services/storageService';
-import { supabase } from '../services/supabase'; // Import supabase client
+import { supabase } from '../services/supabase';
 import Select from './Select';
 import Input from './Input';
+import { calculateStrategyMetrics } from '../utils/strategyCalculations';
 
 const formatDate = (dateString) => {
   if (!dateString) return '';
@@ -27,7 +28,7 @@ const TradeOutcomePopup = ({ isOpen, onClose, strategy, onUpdate }) => {
   if (!isOpen) return null;
 
   return (
-    <div 
+    <div
       className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center"
       role="dialog"
       aria-modal="true"
@@ -49,7 +50,7 @@ const TradeOutcomePopup = ({ isOpen, onClose, strategy, onUpdate }) => {
               <option value="loss">Loss</option>
             </Select>
           </div>
-          
+
           {(outcome === 'profit' || outcome === 'loss') && (
             <div>
               <label htmlFor="amount" className="block text-sm font-medium mb-2 text-[#C9D1D9]">
@@ -94,145 +95,42 @@ const SavedStrategies = () => {
   const [editingStrategy, setEditingStrategy] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [initialCapital, setInitialCapital] = useState(localStorage.getItem('initialCapital') || 0);
 
-  const loadStrategies = async () => {
+  const loadStrategies = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
       const savedStrategies = await storageService.getStrategies();
       setStrategies(savedStrategies);
-    } catch (error) {
-      console.error('Error loading strategies:', error);
-      setError('Failed to load strategies');
+    } catch (err) {
+      setError(err.message || 'Failed to load strategies');
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  useEffect(() => {
-    console.log('Initializing SavedStrategies component...');
-    
-    // Load strategies immediately
-    loadStrategies();
-
-    // Set up real-time subscription
-    const subscription = supabase
-      .channel('strategies_channel')
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'strategies',
-      }, (payload) => {
-        console.log('Change received!', payload);
-        // Add a small delay before reloading to ensure the database operation is complete
-        setTimeout(() => {
-          loadStrategies();
-        }, 500); // 500ms delay
-      })
-      .subscribe((status) => {
-        console.log('Subscription status:', status);
-        if (status === 'SUBSCRIBED') {
-          // Reload strategies when subscription is ready
-          loadStrategies();
-        }
-        if (status === 'SUBSCRIBED') {
-          // Initial load once subscription is ready
-          loadStrategies();
-        }
-      });
-
-    // Cleanup subscription on component unmount
-    return () => {
-      supabase.removeChannel(subscription);
-    };
-  }, []); // Empty dependency array means this effect runs once on mount and cleans up on unmount
-
-  const handleDelete = async (id) => {
-    try {
-      setError(null);
-      await storageService.deleteStrategy(id);
-      await loadStrategies(); // Reload the list after deletion
-    } catch (error) {
-      console.error('Error deleting strategy:', error);
-      setError('Failed to delete strategy');
+  const calculateTotalRoi = useCallback(() => {
+    let totalPnl = 0;
+    strategies.forEach(strategy => {
+      if (strategy.trade_outcome !== 'pending') {
+        totalPnl += strategy.pnl || 0;
+      }
+    });
+    const initialCapitalValue = parseFloat(initialCapital);
+    if (isNaN(initialCapitalValue) || initialCapitalValue === 0) {
+      return 0;
     }
-  };
+    return (totalPnl / initialCapitalValue) * 100;
+  }, [strategies, initialCapital]);
 
-  const handleUpdate = async (id, updatedStrategy) => {
-    try {
-      setError(null);
-      await storageService.updateStrategy(id, updatedStrategy);
-      await loadStrategies(); // Reload the list after update
-    } catch (error) {
-      console.error('Error updating strategy:', error);
-      setError('Failed to update strategy');
+  const strategyRoi = (strategy) => {
+    const initialCapitalValue = parseFloat(initialCapital);
+    if (isNaN(initialCapitalValue) || initialCapitalValue === 0) {
+      return 0;
     }
+    return strategy.pnl ? (strategy.pnl / initialCapitalValue) * 100 : 0;
   };
-
-  const handleExportCSV = () => {
-    const headers = [
-      'Asset',
-      'Strategy',
-      'Open Date',
-      'Close Date',
-      'Legs',
-      'Total Contracts',
-      'Net Premium',
-      'Max Profit',
-      'Max Loss',
-      'Margin Used',
-      'Entry Price',
-      'Status',
-      'P&L',
-      'ROI'
-    ];
-
-    const csvContent = [
-      headers.join(','),
-      ...strategies.map(s => [
-        s.asset,
-        s.strategy_type,
-        s.open_date,
-        s.close_date,
-        s.legs.length,
-        s.legs.reduce((sum, leg) => sum + parseInt(leg.contracts), 0),
-        s.net_premium,
-        s.max_profit,
-        s.max_loss,
-        s.margin_required,
-        s.asset_price,
-        s.trade_outcome,
-        s.pnl || '',
-        s.roi ? s.roi.toFixed(2) + '%' : ''
-      ].join(','))
-    ].join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = 'option_strategies.csv';
-    link.click();
-  };
-
-  if (loading) {
-    return (
-      <div className="card p-6">
-        <div className="flex justify-center items-center h-32">
-          <span className="text-[#8B949E]">Loading strategies...</span>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="card p-6">
-        <div className="flex justify-center items-center h-32">
-          <span className="text-red-400">{error}</span>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="card p-6 rounded-xl">
@@ -250,6 +148,24 @@ const SavedStrategies = () => {
             <span>Export CSV</span>
           </button>
         </div>
+      </div>
+
+      <div className="mb-4">
+        <label htmlFor="initialCapital" className="block text-sm font-medium mb-2 text-[#C9D1D9]">Initial Capital</label>
+        <Input
+          type="number"
+          id="initialCapital"
+          className="input-field"
+          value={initialCapital}
+          onChange={(e) => {
+            localStorage.setItem('initialCapital', e.target.value);
+            setInitialCapital(e.target.value);
+          }}
+        />
+      </div>
+
+      <div className="mb-4">
+        <h3 className="text-lg font-semibold text-emerald-400">Total ROI: {calculateTotalRoi().toFixed(2)}%</h3>
       </div>
 
       <div className="overflow-x-auto">
@@ -273,73 +189,72 @@ const SavedStrategies = () => {
               <th className="table-header text-center">Actions</th>
             </tr>
           </thead>
-          <tbody>
-            {strategies.map((strategy) => (
-              <tr key={strategy.id} className="hover:bg-gray-700">
-                <td className="table-cell py-3 px-4">{strategy.asset}</td>
-                <td className="table-cell py-3 px-4">{strategy.strategy_type}</td>
-                <td className="table-cell py-3 px-4">{formatDate(strategy.open_date)}</td>
-                <td className="table-cell py-3 px-4">{formatDate(strategy.close_date)}</td>
-                <td className="table-cell py-3 px-4">{strategy.legs.length}</td>
-                <td className="table-cell py-3 px-4 text-right">
-                  {strategy.legs.reduce((sum, leg) => sum + parseInt(leg.contracts), 0)}
-                </td>
-                <td className="table-cell py-3 px-4 text-right">${strategy.net_premium}</td>
-                <td className="table-cell py-3 px-4 text-right">
-                  {strategy.max_profit === 'Unlimited' ? 'Unlimited' : `$${strategy.max_profit}`}
-                </td>
-                <td className="table-cell py-3 px-4 text-right">
-                  {strategy.max_loss === 'Unlimited' ? 'Unlimited' : `-$${Math.abs(strategy.max_loss)}`}
-                </td>
-                <td className="table-cell py-3 px-4 text-right">${strategy.margin_required}</td>
-                <td className="table-cell py-3 px-4 text-right">${strategy.asset_price}</td>
-                <td className="table-cell py-3 px-4 text-center">
-                  <span className={`tag ${
-                    strategy.trade_outcome === 'profit' ? 'tag-profit' :
-                    strategy.trade_outcome === 'loss' ? 'tag-loss' :
-                    'bg-[#30363D] text-[#8B949E]'
-                  }`}>
-                    {strategy.trade_outcome.charAt(0).toUpperCase() + strategy.trade_outcome.slice(1)}
-                  </span>
-                </td>
-                <td className="table-cell py-3 px-4 text-right">
-                  {strategy.trade_outcome !== 'pending' ? (
-                    <span className={strategy.trade_outcome === 'loss' ? 'text-red-400' : 'text-green-400'}>
-                      {strategy.trade_outcome === 'loss' ? '-' : ''}${Math.abs(strategy.pnl).toFixed(2)}
+          <tbody className="[&>*:nth-child(even)]:bg-gray-850">
+            {strategies.map((strategy) => {
+              const strategyRoiValue = strategyRoi(strategy);
+              return (
+                <tr key={strategy.id} className="hover:bg-gray-700">
+                  <td className="table-cell py-3 px-4">{strategy.asset}</td>
+                  <td className="table-cell py-3 px-4">{strategy.strategy_type}</td>
+                  <td className="table-cell py-3 px-4">{formatDate(strategy.open_date)}</td>
+                  <td className="table-cell py-3 px-4">{formatDate(strategy.close_date)}</td>
+                  <td className="table-cell py-3 px-4">{strategy.legs.length}</td>
+                  <td className="table-cell py-3 px-4 text-right">
+                    {strategy.legs.reduce((sum, leg) => sum + parseInt(leg.contracts), 0)}
+                  </td>
+                  <td className="table-cell py-3 px-4 text-right">${strategy.net_premium}</td>
+                  <td className="table-cell py-3 px-4 text-right">
+                    {strategy.max_profit === 'Unlimited' ? 'Unlimited' : `$${strategy.max_profit}`}
+                  </td>
+                  <td className="table-cell py-3 px-4 text-right">
+                    {strategy.max_loss === 'Unlimited' ? 'Unlimited' : `-$${Math.abs(strategy.max_loss)}`}
+                  </td>
+                  <td className="table-cell py-3 px-4 text-right">${strategy.margin_required}</td>
+                  <td className="table-cell py-3 px-4 text-right">${strategy.asset_price}</td>
+                  <td className="table-cell py-3 px-4 text-center">
+                    <span className={`tag ${strategy.trade_outcome === 'profit' ? 'tag-profit' : strategy.trade_outcome === 'loss' ? 'tag-loss' : 'bg-[#30363D] text-[#8B949E]'}`}>
+                      {strategy.trade_outcome.charAt(0).toUpperCase() + strategy.trade_outcome.slice(1)}
                     </span>
-                  ) : ''}
-                </td>
-                <td className="table-cell py-3 px-4 text-right">
-                  {strategy.trade_outcome === 'pending' ? (
-                    <span className="text-[#8B949E]">
-                      Max: {((strategy.max_profit / strategy.margin_required) * 100).toFixed(2)}%
-                    </span>
-                  ) : (
-                    <span className={strategy.trade_outcome === 'loss' ? 'text-red-400' : 'text-green-400'}>
-                      {strategy.trade_outcome === 'loss' ? '-' : ''}{Math.abs(strategy.roi).toFixed(2)}%
-                    </span>
-                  )}
-                </td>
-                <td className="table-cell py-3 px-4 text-center">
-                  <div className="flex justify-center space-x-2">
-                    <button
-                      onClick={() => setEditingStrategy(strategy)}
-                      className="btn btn-secondary p-1"
-                      title="Edit outcome"
-                    >
-                      <span className="material-icons text-sm">edit</span>
-                    </button>
-                    <button
-                      onClick={() => handleDelete(strategy.id)}
-                      className="btn btn-danger p-1"
-                      title="Delete strategy"
-                    >
-                      <span className="material-icons text-sm">delete</span>
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
+                  </td>
+                  <td className="table-cell py-3 px-4 text-right">
+                    {strategy.trade_outcome !== 'pending' ? (
+                      <span className={strategy.trade_outcome === 'loss' ? 'text-red-400' : 'text-green-400'}>
+                        {strategy.trade_outcome === 'loss' ? '-' : ''}${Math.abs(strategy.pnl).toFixed(2)}
+                      </span>
+                    ) : ''}
+                  </td>
+                  <td className="table-cell py-3 px-4 text-right">
+                    {strategy.trade_outcome === 'pending' ? (
+                      <span className="text-[#8B949E]">
+                        Max: {((strategy.max_profit / strategy.margin_required) * 100).toFixed(2)}%
+                      </span>
+                    ) : (
+                      <span className={strategy.trade_outcome === 'loss' ? 'text-red-400' : 'text-green-400'}>
+                        {strategy.trade_outcome === 'loss' ? '-' : ''}{strategyRoiValue ? strategyRoiValue.toFixed(2) : 0}%
+                      </span>
+                    )}
+                  </td>
+                  <td className="table-cell py-3 px-4 text-center">
+                    <div className="flex justify-center space-x-2">
+                      <button
+                        onClick={() => setEditingStrategy(strategy)}
+                        className="btn btn-secondary p-1"
+                        title="Edit outcome"
+                      >
+                        <span className="material-icons text-sm">edit</span>
+                      </button>
+                      <button
+                        onClick={() => handleDelete(strategy.id)}
+                        className="btn btn-danger p-1"
+                        title="Delete strategy"
+                      >
+                        <span className="material-icons text-sm">delete</span>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

@@ -181,24 +181,7 @@ const detectStrategy = (legs) => {
  * @returns {import('../components/StrategyForm').StrategyMetrics} The calculated strategy metrics.
  */
 export const calculateStrategyMetrics = (legs, assetPrice, marginRequired) => {
-  if (!legs || legs.length === 0) {
-    return {
-      netPremium: 0,
-      maxProfit: 0,
-      maxLoss: 0,
-      breakevens: [],
-      probProfit: 0,
-      roi: 0,
-      strategyName: 'N/A',
-      strategyType: 'N/A',
-      direction: 'N/A',
-      isCredit: false,
-      isReverse: false,
-      optionType: 'N/A',
-    };
-  }
 
-  const strategyDetails = detectStrategy(legs);
   let netPremium = 0;
 
   // Calculate net premium based on the formula: Sum of (Premium × Quantity × +1 for Sell, −1 for Buy)
@@ -277,10 +260,7 @@ export const calculateStrategyMetrics = (legs, assetPrice, marginRequired) => {
   // Returning 'N/A' or a placeholder for now.
   const probProfit = 'N/A'; 
 
-  const explanations = getSimplifiedExplanation(
-    { strategyName: strategyDetails.name, strategyType: strategyDetails.type }, // Pass relevant metrics
-    legs
-  );
+  const strategyDetails = detectStrategy(legs);
 
   return {
     netPremium: parseFloat(netPremium.toFixed(2)),
@@ -295,8 +275,6 @@ export const calculateStrategyMetrics = (legs, assetPrice, marginRequired) => {
     isCredit: strategyDetails.isCredit,
     isReverse: strategyDetails.isReverse,
     optionType: strategyDetails.optionType,
-    maxProfitExplanation: explanations.maxProfitExplanation, // Add this
-    maxLossExplanation: explanations.maxLossExplanation,     // Add this
   };
 };
 
@@ -328,104 +306,4 @@ export const generatePayoffData = (legs) => {
   }
 
   return { assetPrices, payoffs };
-};
-
-/**
- * Generates simplified explanations for max profit and max loss scenarios.
- * @param {import('../components/StrategyForm').StrategyMetrics} metrics - The calculated strategy metrics.
- * @param {Array<import('../components/Leg').LegValues>} legs - An array of leg objects.
- * @returns {{maxProfitExplanation: string, maxLossExplanation: string}} Explanations for profit and loss.
- */
-export const getSimplifiedExplanation = (metrics, legs) => {
-  const explanations = {
-    maxProfitExplanation: '',
-    maxLossExplanation: '',
-  };
-
-  const assetPlaceholder = 'the asset'; // Default placeholder
-
-  // Helper to get sorted unique valid strikes
-  const getSortedUniqueStrikes = (legs) => {
-    return [...new Set(legs.map(leg => parseFloat(leg.strike)).filter(s => !isNaN(s) && s > 0))].sort((a, b) => a - b);
-  };
-
-  const sortedStrikes = getSortedUniqueStrikes(legs);
-  const lowerStrike = sortedStrikes[0];
-  const higherStrike = sortedStrikes[sortedStrikes.length - 1];
-  const middleStrike = sortedStrikes.length === 3 ? sortedStrikes[1] : null; // For butterflies/condors with 3 unique strikes
-
-  // For Condors and Butterflies with 4 legs, need to identify specific strikes
-  let strike1, strike2, strike3, strike4;
-  if (legs.length === 4) {
-    const sortedLegs = [...legs].sort((a, b) => parseFloat(a.strike) - parseFloat(b.strike));
-    strike1 = parseFloat(sortedLegs[0].strike);
-    strike2 = parseFloat(sortedLegs[1].strike);
-    strike3 = parseFloat(sortedLegs[2].strike);
-    strike4 = parseFloat(sortedLegs[3].strike);
-  }
-
-
-  switch (metrics.strategyName) {
-    case 'Naked Call':
-      explanations.maxProfitExplanation = `You get max profit when ${assetPlaceholder} stays below strike.`;
-      explanations.maxLossExplanation = `You get max loss when ${assetPlaceholder} rises far above strike.`;
-      break;
-    case 'Naked Put':
-      explanations.maxProfitExplanation = `You get max profit when ${assetPlaceholder} stays above strike.`;
-      explanations.maxLossExplanation = `You get max loss when ${assetPlaceholder} drops to zero.`;
-      break;
-    case 'Long Call':
-      explanations.maxProfitExplanation = `You get max profit when ${assetPlaceholder} rises well above strike.`;
-      explanations.maxLossExplanation = `You get max loss when ${assetPlaceholder} stays below strike.`;
-      break;
-    case 'Long Put':
-      explanations.maxProfitExplanation = `You get max profit when ${assetPlaceholder} drops well below strike.`;
-      explanations.maxLossExplanation = `You get max loss when ${assetPlaceholder} stays above strike.`;
-      break;
-    case 'Bull Call Spread':
-      explanations.maxProfitExplanation = `You get max profit when price ends above higher strike (${higherStrike ? `$${higherStrike.toFixed(2)}` : 'higher strike'}).`;
-      explanations.maxLossExplanation = `You get max loss when price stays below lower strike (${lowerStrike ? `$${lowerStrike.toFixed(2)}` : 'lower strike'}).`;
-      break;
-    case 'Bear Put Spread':
-      explanations.maxProfitExplanation = `You get max profit when price stays above higher strike (${higherStrike ? `$${higherStrike.toFixed(2)}` : 'higher strike'}).`;
-      explanations.maxLossExplanation = `You get max loss when price drops below lower strike (${lowerStrike ? `$${lowerStrike.toFixed(2)}` : 'lower strike'}).`;
-      break;
-    case 'Bear Call Spread':
-      explanations.maxProfitExplanation = `You get max profit when price stays below lower strike (${lowerStrike ? `$${lowerStrike.toFixed(2)}` : 'lower strike'}).`;
-      explanations.maxLossExplanation = `You get max loss when price rises above higher strike (${higherStrike ? `$${higherStrike.toFixed(2)}` : 'higher strike'}).`;
-      break;
-    case 'Bull Put Spread':
-      explanations.maxProfitExplanation = `You get max profit when price stays above higher strike (${higherStrike ? `$${higherStrike.toFixed(2)}` : 'higher strike'}).`;
-      explanations.maxLossExplanation = `You get max loss when price drops below lower strike (${lowerStrike ? `$${lowerStrike.toFixed(2)}` : 'lower strike'}).`;
-      break;
-    case 'Iron Condor':
-      explanations.maxProfitExplanation = `You get max profit when price stays between short strikes (${strike2 ? `$${strike2.toFixed(2)}` : 'short strike 2'} and ${strike3 ? `$${strike3.toFixed(2)}` : 'short strike 3'}).`;
-      explanations.maxLossExplanation = `You get max loss when price goes below or above long wings (${strike1 ? `$${strike1.toFixed(2)}` : 'long wing 1'} or ${strike4 ? `$${strike4.toFixed(2)}` : 'long wing 4'}).`;
-      break;
-    case 'Reverse Iron Condor':
-      explanations.maxProfitExplanation = `You get max profit when price moves sharply outside short strikes (${strike2 ? `$${strike2.toFixed(2)}` : 'short strike 2'} or ${strike3 ? `$${strike3.toFixed(2)}` : 'short strike 3'}).`;
-      explanations.maxLossExplanation = `You get max loss when price stays between middle strikes (${strike2 ? `$${strike2.toFixed(2)}` : 'middle strike 2'} and ${strike3 ? `$${strike3.toFixed(2)}` : 'middle strike 3'}).`;
-      break;
-    case 'Long Call Butterfly':
-    case 'Long Put Butterfly':
-      explanations.maxProfitExplanation = `You get max profit when price ends exactly at middle strike (${middleStrike ? `$${middleStrike.toFixed(2)}` : 'middle strike'}).`;
-      explanations.maxLossExplanation = `You get max loss when price ends outside wings (${lowerStrike ? `$${lowerStrike.toFixed(2)}` : 'lower strike'} or ${higherStrike ? `$${higherStrike.toFixed(2)}` : 'higher strike'}).`;
-      break;
-    case 'Short Call Butterfly':
-    case 'Short Put Butterfly':
-      explanations.maxProfitExplanation = `You get max profit when price ends outside wings (${lowerStrike ? `$${lowerStrike.toFixed(2)}` : 'lower strike'} or ${higherStrike ? `$${higherStrike.toFixed(2)}` : 'higher strike'}).`;
-      explanations.maxLossExplanation = `You get max loss when price ends exactly at middle strike (${middleStrike ? `$${middleStrike.toFixed(2)}` : 'middle strike'}).`;
-      break;
-    case 'Put Condor':
-    case 'Call Condor':
-      explanations.maxProfitExplanation = `You get max profit when price ends near middle strikes.`; // Need more specific strikes for this
-      explanations.maxLossExplanation = `You get max loss when price moves beyond wings.`; // Need more specific strikes for this
-      break;
-    default:
-      explanations.maxProfitExplanation = '';
-      explanations.maxLossExplanation = '';
-      break;
-  }
-
-  return explanations;
 };

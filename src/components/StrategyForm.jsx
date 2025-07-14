@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Select from './Select';
 import Input from './Input';
 import DatePicker from './DatePicker';
 import Leg from './Leg';
-import { calculateStrategyMetrics, getSimplifiedExplanation } from '../utils/strategyCalculations';
+import { calculateStrategyMetrics } from '../utils/strategyCalculations';
 import { initChart, updatePayoffChart } from '../utils/chartUtils';
 import { storageService } from '../services/storageService';
 
@@ -54,6 +54,7 @@ const StrategyForm = () => {
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+  const initialCapitalValue = parseFloat(localStorage.getItem('initialCapital') || 0);
 
   const calculateMetrics = () => {
     // Ensure there's at least one leg to calculate metrics for
@@ -72,10 +73,10 @@ const StrategyForm = () => {
     const newMetrics = calculateStrategyMetrics(
       Object.values(legData),
       isNaN(currentAssetPrice) ? undefined : currentAssetPrice,
-      isNaN(currentMarginRequired) ? undefined : currentMarginRequired
+      isNaN(currentMarginRequired) ? undefined : currentMarginRequired,
     );
     setMetrics(newMetrics);
-    setStrategyName(newMetrics.strategyName); // Update strategyName state
+    setStrategyName(newMetrics.strategyName);
   };
 
   /**

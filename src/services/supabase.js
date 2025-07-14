@@ -48,6 +48,25 @@ export const auth = {
 
 // Database operations
 export const db = {
+  initialCapital: {
+    get: async (userId) => {
+      const { data, error } = await supabase
+        .from('initial_capital')
+        .select('amount')
+        .eq('user_id', userId)
+        .single();
+      if (error && error.code !== 'PGRST116') throw error; // PGRST116: No rows found
+      return data?.amount ?? null;
+    },
+    set: async (userId, amount) => {
+      // Upsert initial capital for user
+      const { error } = await supabase
+        .from('initial_capital')
+        .upsert([{ user_id: userId, amount }], { onConflict: ['user_id'] });
+      if (error) throw error;
+      return true;
+    }
+  },
   strategies: {
     create: async (strategy) => {
       try {

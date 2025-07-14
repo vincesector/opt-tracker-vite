@@ -10,6 +10,25 @@ class StorageService {
     // No initialization needed as we're using Supabase directly
   }
 
+  async getInitialCapital(userId) {
+    try {
+      return await db.initialCapital.get(userId);
+    } catch (error) {
+      console.error('Error getting initial capital:', error);
+      return null;
+    }
+  }
+
+  async setInitialCapital(userId, amount) {
+    try {
+      await db.initialCapital.set(userId, amount);
+      return true;
+    } catch (error) {
+      console.error('Error setting initial capital:', error);
+      return false;
+    }
+  }
+
   async getStrategies() {
     try {
       console.log('Fetching strategies from database...');
