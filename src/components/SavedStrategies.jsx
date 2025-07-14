@@ -4,7 +4,7 @@ import { supabase } from '../services/supabase';
 import Select from './Select';
 import Input from './Input';
 import { calculateStrategyMetrics } from '../utils/strategyCalculations';
-
+import LoginPage from './LoginPage';
 const formatDate = (dateString) => {
   if (!dateString) return '';
   return new Date(dateString).toLocaleDateString();
@@ -95,7 +95,8 @@ const SavedStrategies = () => {
   const [editingStrategy, setEditingStrategy] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [initialCapital, setInitialCapital] = useState(localStorage.getItem('initialCapital') || 0);
+  const [initialCapital, setInitialCapital] = useState(0);
+  const [user, setUser] = useState(null);
 
   const loadStrategies = useCallback(async () => {
     try {
@@ -109,6 +110,52 @@ const SavedStrategies = () => {
       setLoading(false);
     }
   }, []);
+
+  // Load user and initial capital from Supabase
+  useEffect(() => {
+    const getUserAndSettings = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user);
+      if (user) {
+        // Load initial capital from user_settings
+        const { data, error } = await supabase
+          .from('user_settings')
+          .select('initial_capital')
+          .eq('user_id', user.id)
+          .single();
+        if (!error && data && data.initial_capital !== null) {
+          setInitialCapital(data.initial_capital);
+        } else {
+          setInitialCapital(0);
+        }
+        loadStrategies();
+      }
+    };
+    getUserAndSettings();
+    // Listen for auth changes
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user || null);
+      if (session?.user) {
+        // Load initial capital for new session
+        supabase
+          .from('user_settings')
+          .select('initial_capital')
+          .eq('user_id', session.user.id)
+          .single()
+          .then(({ data, error }) => {
+            if (!error && data && data.initial_capital !== null) {
+              setInitialCapital(data.initial_capital);
+            } else {
+              setInitialCapital(0);
+            }
+            loadStrategies();
+          });
+      }
+    });
+    return () => {
+      listener?.subscription?.unsubscribe();
+    };
+  }, [loadStrategies]);
 
   const calculateTotalRoi = useCallback(() => {
     let totalPnl = 0;
@@ -124,14 +171,9 @@ const SavedStrategies = () => {
     return (totalPnl / initialCapitalValue) * 100;
   }, [strategies, initialCapital]);
 
-  const strategyRoi = (strategy) => {
-    const initialCapitalValue = parseFloat(initialCapital);
-    if (isNaN(initialCapitalValue) || initialCapitalValue === 0) {
-      return 0;
-    }
-    return strategy.pnl ? (strategy.pnl / initialCapitalValue) * 100 : 0;
-  };
-
+  if (!user) {
+    return <LoginPage />;
+  }
   return (
     <div className="card p-6 rounded-xl">
       <div className="flex justify-between items-center mb-4">
@@ -157,9 +199,17 @@ const SavedStrategies = () => {
           id="initialCapital"
           className="input-field"
           value={initialCapital}
-          onChange={(e) => {
-            localStorage.setItem('initialCapital', e.target.value);
-            setInitialCapital(e.target.value);
+          onChange={async (e) => {
+            const value = e.target.value;
+            setInitialCapital(value);
+            if (user) {
+              // Upsert initial capital for this user
+              await supabase.from('user_settings').upsert({
+                user_id: user.id,
+                initial_capital: value,
+                updated_at: new Date().toISOString(),
+              }, { onConflict: ['user_id'] });
+            }
           }}
         />
       </div>
@@ -267,6 +317,6 @@ const SavedStrategies = () => {
       />
     </div>
   );
-};
+}
 
 export default SavedStrategies;
