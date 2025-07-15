@@ -200,11 +200,6 @@ const Dashboard = () => {
     const labels = series.map(p => p.date.toLocaleDateString());
     const data = series.map(p => p.value);
     setPortfolioData({
-              {/* Collateral icon next to stats */}
-              <div className="relative group">
-                <img src={collateralIcon} alt="Collateral" className="w-6 h-6 ml-2" />
-                <span className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 px-2 py-1 rounded bg-[#23272F] text-xs text-gray-200 opacity-0 group-hover:opacity-100 transition pointer-events-none whitespace-nowrap z-20 border border-[#30363D]">collateral</span>
-              </div>
       labels,
       datasets: [
         {
