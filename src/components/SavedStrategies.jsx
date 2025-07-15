@@ -218,8 +218,10 @@ const SavedStrategies = () => {
       if (s.trade_outcome !== 'pending') totalPnL += s.pnl || 0;
       totalMarginUsed += s.margin_required ? Number(s.margin_required) : 0;
     });
+    // Net P&L and ROI use initial capital
     const roi = initialCapital && initialCapital !== 0 ? (totalPnL / initialCapital) * 100 : 0;
-    return { totalTrades, wins, losses, totalPnL, totalMarginUsed, roi };
+    const currentCapital = initialCapital + totalPnL;
+    return { totalTrades, wins, losses, totalPnL, totalMarginUsed, roi, currentCapital };
   }, [strategies, initialCapital]);
 
   const formatCurrency = (value) => {
@@ -235,8 +237,8 @@ const SavedStrategies = () => {
 
   return (
     <>
-      <div className="card p-4 mb-8 flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0 md:space-x-6">
-        <div className="flex flex-wrap gap-4 w-full justify-between">
+      <div className="card p-4 mb-8 flex flex-col md:flex-row md:items-center md:justify-between space-y-2 md:space-y-0 md:space-x-4">
+        <div className="flex flex-wrap gap-4 w-full justify-between items-center min-w-[900px]">
           <div className="flex items-center gap-2">
             <span className="material-icons text-blue-400">insights</span>
             <span className="text-[#8B949E] text-sm">Total Trades:</span>
@@ -258,6 +260,11 @@ const SavedStrategies = () => {
             <span className="font-bold text-base">{formatCurrency(stats.totalMarginUsed)}</span>
           </div>
           <div className="flex items-center gap-2">
+            <span className="material-icons text-cyan-400">account_balance</span>
+            <span className="text-[#8B949E] text-sm">Current Capital:</span>
+            <span className="font-bold text-base">{formatCurrency(stats.currentCapital)}</span>
+          </div>
+          <div className="flex items-center gap-2">
             <span className="material-icons text-pink-400">trending_down</span>
             <span className="text-[#8B949E] text-sm">Net P&amp;L:</span>
             <span className={`font-bold text-base ${stats.totalPnL < 0 ? 'text-red-400' : 'text-green-400'}`}>{formatCurrency(stats.totalPnL)}</span>
@@ -266,6 +273,16 @@ const SavedStrategies = () => {
             <span className="material-icons text-purple-400">percent</span>
             <span className="text-[#8B949E] text-sm">Overall ROI:</span>
             <span className={`font-bold text-base ${stats.roi < 0 ? 'text-red-400' : 'text-green-400'}`}>{stats.roi.toFixed(2)}%</span>
+          </div>
+          <div className="flex items-center gap-1 ml-2">
+            <span className="text-[#8B949E] text-xs">Initial Capital:</span>
+            <span className="font-bold text-xs">{formatCurrency(initialCapital)}</span>
+            <span className="relative group" style={{ minWidth: 0 }}>
+              <span className="material-icons text-xs text-[#8B949E] cursor-pointer align-middle">help_outline</span>
+              <span className="absolute left-full top-1/2 -translate-y-1/2 ml-2 z-10 bg-[#21262D] text-xs text-[#C9D1D9] px-2 py-1 rounded shadow-lg border border-[#30363D] opacity-0 group-hover:opacity-100 group-hover:delay-0 transition-opacity duration-100 pointer-events-none max-w-xs whitespace-normal break-words">
+                Go to the Dashboard tab to edit your initial capital.
+              </span>
+            </span>
           </div>
         </div>
       </div>
@@ -287,36 +304,7 @@ const SavedStrategies = () => {
           </div>
         </div>
 
-        <div className="mb-4">
-          <label htmlFor="initialCapital" className="block text-sm font-medium mb-2 text-[#C9D1D9]">Initial Capital</label>
-          <Input
-            type="number"
-            id="initialCapital"
-            className="input-field"
-            value={initialCapital}
-            onChange={async (e) => {
-              const value = parseFloat(e.target.value);
-              setInitialCapital(value);
-              if (user) {
-                // Upsert initial capital for this user as numeric
-                await supabase.from('user_settings').upsert({
-                  user_id: user.id,
-                  initial_capital: value,
-                  updated_at: new Date().toISOString(),
-                }, { onConflict: ['user_id'] });
-                // Reload from DB to ensure sync
-                const { data, error } = await supabase
-                  .from('user_settings')
-                  .select('initial_capital')
-                  .eq('user_id', user.id)
-                  .single();
-                if (!error && data && data.initial_capital !== null) {
-                  setInitialCapital(data.initial_capital);
-                }
-              }
-            }}
-          />
-        </div>
+        {/* Initial capital input removed for compact display. Edit in Dashboard tab. */}
 
         <div className="mb-4">
           <h3 className="text-lg font-semibold text-emerald-400">Total ROI: {calculateTotalRoi().toFixed(2)}%</h3>
@@ -398,7 +386,10 @@ const SavedStrategies = () => {
                         <span className="material-icons text-sm">edit</span>
                       </button>
                       <button
-                        onClick={() => handleDelete(strategy.id)}
+                        onClick={async () => {
+                          await storageService.deleteStrategy(strategy.id);
+                          setStrategies(strategies.filter(s => s.id !== strategy.id));
+                        }}
                         className="btn btn-danger p-1"
                         title="Delete strategy"
                       >
