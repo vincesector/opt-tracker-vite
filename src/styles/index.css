@@ -1,8 +1,7 @@
+@import './glassmorphism.css';
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-@import './glassmorphism.css';
 
 @layer base {
   body {
