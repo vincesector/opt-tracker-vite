@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -12,7 +12,7 @@ import {
 } from 'chart.js';
 import Input from './Input';
 // import { storageService } from '../services/storageService';
-import { supabase } from '../services/supabase';
+import { supabase, db } from '../services/supabase';
 
 ChartJS.register(
   CategoryScale,
@@ -30,21 +30,13 @@ const Dashboard = () => {
   const [showPopup, setShowPopup] = useState(false);
   const [inputValue, setInputValue] = useState('');
   const [userId, setUserId] = useState(null);
-  const [portfolioData, setPortfolioData] = useState({
-    labels: ['Day 1', 'Day 2', 'Day 3', 'Day 4', 'Day 5', 'Day 6'],
-    datasets: [
-      {
-        label: 'Portfolio Value',
-        data: [12000, 12500, 12300, 13000, 12800, 13200],
-        borderColor: 'rgb(75, 192, 192)',
-        tension: 0.1
-      },
-    ],
-  });
+  const [portfolioData, setPortfolioData] = useState({ labels: [], datasets: [] });
+  const [strategies, setStrategies] = useState([]);
+  const [selectedRange, setSelectedRange] = useState('ALL');
 
   useEffect(() => {
-    // Get current user and initial capital from Supabase
-    const fetchUserAndCapital = async () => {
+    // Get current user, initial capital, and strategies
+    const fetchData = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         setUserId(user.id);
@@ -55,16 +47,82 @@ const Dashboard = () => {
           .eq('user_id', user.id)
           .single();
         if (error && error.code !== 'PGRST116') {
-          // PGRST116 = no rows found, not an error for us
           console.error('Error fetching initial capital:', error);
         }
         setInitialCapital(data?.initial_capital || 0);
+        // Fetch strategies
+        const userStrategies = await db.strategies.getAll();
+        setStrategies(userStrategies);
       }
     };
-    fetchUserAndCapital();
-    // Fetch portfolio performance data from the database here
-    // and update the portfolioData state
+    fetchData();
   }, []);
+
+  // Helper: filter strategies by selected range
+  function filterByRange(strategies, range) {
+    const now = new Date();
+    let fromDate = null;
+    if (range === 'YTD') {
+      fromDate = new Date(now.getFullYear(), 0, 1);
+    } else if (range === '1W') {
+      fromDate = new Date(now);
+      fromDate.setDate(now.getDate() - 7);
+    } else if (range === '1M') {
+      fromDate = new Date(now);
+      fromDate.setMonth(now.getMonth() - 1);
+    } else if (range === '3M') {
+      fromDate = new Date(now);
+      fromDate.setMonth(now.getMonth() - 3);
+    }
+    if (!fromDate) return strategies;
+    return strategies.filter(s => {
+      if (!s.close_date) return false;
+      const close = new Date(s.close_date);
+      return close >= fromDate && close <= now;
+    });
+  }
+
+  // Helper: build portfolio value time series
+  function buildPortfolioSeries(strategies, initialCapital) {
+    // Only use closed trades (with close_date and pnl)
+    const closed = strategies
+      .filter(s => s.close_date && typeof s.pnl === 'number')
+      .sort((a, b) => new Date(a.close_date) - new Date(b.close_date));
+    let value = Number(initialCapital) || 0;
+    const points = [];
+    // Add initial point
+    if (closed.length === 0) {
+      points.push({ date: new Date(), value });
+    } else {
+      points.push({ date: new Date(closed[0].close_date), value });
+    }
+    closed.forEach(s => {
+      value += s.pnl;
+      points.push({ date: new Date(s.close_date), value });
+    });
+    return points;
+  }
+
+  // Update chart data when strategies, initialCapital, or selectedRange changes
+  useEffect(() => {
+    if (!strategies) return;
+    const filtered = filterByRange(strategies, selectedRange);
+    const series = buildPortfolioSeries(filtered, initialCapital);
+    const labels = series.map(p => p.date.toLocaleDateString());
+    const data = series.map(p => p.value);
+    setPortfolioData({
+      labels,
+      datasets: [
+        {
+          label: 'Portfolio Value',
+          data,
+          borderColor: 'rgb(75, 192, 192)',
+          tension: 0.1,
+          fill: false,
+        },
+      ],
+    });
+  }, [strategies, initialCapital, selectedRange]);
 
   const handleOpenPopup = () => {
     setInputValue(initialCapital);
@@ -141,6 +199,18 @@ const Dashboard = () => {
 
       <div className="mb-4">
         <span className="text-lg text-emerald-400">Initial Capital: ${initialCapital}</span>
+      </div>
+
+      <div className="flex gap-2 mb-4">
+        {['ALL', 'YTD', '1W', '1M', '3M'].map(range => (
+          <button
+            key={range}
+            className={`px-3 py-1 rounded text-sm font-medium border transition-colors duration-150 ${selectedRange === range ? 'bg-emerald-400 text-black border-emerald-400' : 'bg-[#161B22] text-gray-300 border-[#30363D] hover:bg-emerald-900'}`}
+            onClick={() => setSelectedRange(range)}
+          >
+            {range}
+          </button>
+        ))}
       </div>
 
       <div className="chart-container">
