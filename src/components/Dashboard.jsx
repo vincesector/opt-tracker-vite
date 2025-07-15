@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Line } from 'react-chartjs-2';
+import { Line, Doughnut, Bar } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -33,6 +33,8 @@ const Dashboard = () => {
   const [portfolioData, setPortfolioData] = useState({ labels: [], datasets: [] });
   const [strategies, setStrategies] = useState([]);
   const [selectedRange, setSelectedRange] = useState('ALL');
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [earningsRange, setEarningsRange] = useState('6M');
 
   useEffect(() => {
     // Get current user, initial capital, and strategies
@@ -62,17 +64,20 @@ const Dashboard = () => {
   function filterByRange(strategies, range) {
     const now = new Date();
     let fromDate = null;
-    if (range === 'YTD') {
+    if (range === 'YTD' || range === 'This year') {
       fromDate = new Date(now.getFullYear(), 0, 1);
-    } else if (range === '1W') {
+    } else if (range === '1W' || range === '1 week') {
       fromDate = new Date(now);
       fromDate.setDate(now.getDate() - 7);
-    } else if (range === '1M') {
+    } else if (range === '1M' || range === '1 month') {
       fromDate = new Date(now);
       fromDate.setMonth(now.getMonth() - 1);
-    } else if (range === '3M') {
+    } else if (range === '3M' || range === '3 months') {
       fromDate = new Date(now);
       fromDate.setMonth(now.getMonth() - 3);
+    } else if (range === '6M' || range === '6 months') {
+      fromDate = new Date(now);
+      fromDate.setMonth(now.getMonth() - 6);
     }
     if (!fromDate) return strategies;
     return strategies.filter(s => {
@@ -103,6 +108,30 @@ const Dashboard = () => {
     return points;
   }
 
+  // Helper: build earnings bar chart data
+  function buildEarningsData(strategies, range) {
+    // Group by month for the selected range
+    const filtered = filterByRange(strategies, range);
+    const earningsByMonth = {};
+    filtered.forEach(s => {
+      if (!s.close_date || typeof s.pnl !== 'number') return;
+      const d = new Date(s.close_date);
+      const label = `${d.toLocaleString('default', { month: 'short' })} ${d.getFullYear()}`;
+      if (!earningsByMonth[label]) earningsByMonth[label] = 0;
+      earningsByMonth[label] += s.pnl;
+    });
+    // Sort labels chronologically
+    const labels = Object.keys(earningsByMonth).sort((a, b) => {
+      const [ma, ya] = a.split(' ');
+      const [mb, yb] = b.split(' ');
+      const da = new Date(`${ma} 1, ${ya}`);
+      const db = new Date(`${mb} 1, ${yb}`);
+      return da - db;
+    });
+    const data = labels.map(l => earningsByMonth[l]);
+    return { labels, data };
+  }
+
   // Update chart data when strategies, initialCapital, or selectedRange changes
   useEffect(() => {
     if (!strategies) return;
@@ -123,6 +152,68 @@ const Dashboard = () => {
       ],
     });
   }, [strategies, initialCapital, selectedRange]);
+
+  // Earnings bar chart data
+  const earningsBar = buildEarningsData(strategies, earningsRange);
+  const earningsBarData = {
+    labels: earningsBar.labels,
+    datasets: [
+      {
+        label: 'Profit',
+        data: earningsBar.data,
+        backgroundColor: earningsBar.data.map(v => v >= 0 ? 'rgba(163, 230, 53, 0.7)' : 'rgba(239, 68, 68, 0.7)'),
+        borderRadius: 6,
+        barPercentage: 0.6,
+      },
+    ],
+  };
+  const earningsBarOptions = {
+    plugins: {
+      legend: { display: false },
+      title: { display: false },
+      tooltip: {
+        callbacks: {
+          label: ctx => `Profit: $${ctx.parsed.y.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
+        }
+      }
+    },
+    scales: {
+      x: {
+        ticks: { color: '#C9D1D9' },
+        grid: { color: 'rgba(255,255,255,0.05)' }
+      },
+      y: {
+        ticks: { color: '#C9D1D9' },
+        grid: { color: 'rgba(255,255,255,0.05)' }
+      }
+    }
+  };
+
+  // Placeholder investments donut chart
+  const investmentsData = {
+    labels: ['6 months', '12 months', '24 months'],
+    datasets: [
+      {
+        data: [6251.68, 1096.79, 3619.39],
+        backgroundColor: [
+          'rgba(139, 92, 246, 0.7)',
+          'rgba(34, 197, 94, 0.7)',
+          'rgba(253, 224, 71, 0.7)'
+        ],
+        borderWidth: 0,
+      },
+    ],
+  };
+  const investmentsOptions = {
+    plugins: {
+      legend: {
+        labels: { color: '#C9D1D9', font: { size: 12 } },
+        position: 'bottom',
+      },
+      title: { display: false },
+    },
+    cutout: '70%',
+  };
 
   const handleOpenPopup = () => {
     setInputValue(initialCapital);
@@ -187,36 +278,122 @@ const Dashboard = () => {
     }
   };
 
+  // Calculate current portfolio value and percent change for the selected range
+  const filtered = filterByRange(strategies, selectedRange);
+  const series = buildPortfolioSeries(filtered, initialCapital);
+  const currentValue = series.length ? series[series.length - 1].value : initialCapital;
+  const startValue = series.length ? series[0].value : initialCapital;
+  const percentChange = startValue !== 0 ? ((currentValue - startValue) / startValue) * 100 : 0;
+
+  // Dropdown options for filter
+  const filterOptions = [
+    { label: 'ALL', value: 'ALL' },
+    { label: 'This year', value: 'YTD' },
+    { label: '1 week', value: '1W' },
+    { label: '1 month', value: '1M' },
+    { label: '3 months', value: '3M' },
+  ];
+  const earningsOptions = [
+    { label: '6 months', value: '6M' },
+    { label: '12 months', value: '12M' },
+    { label: '24 months', value: '24M' },
+  ];
+
   return (
-    <div className="container mx-auto p-4">
-      <div className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-semibold text-emerald-400">Dashboard</h1>
-        <button onClick={handleOpenPopup} className="text-gray-300 hover:text-emerald-400" title="Set Initial Capital">
-          <span className="material-icons">settings</span>
-        </button>
+    <div className="container mx-auto p-4 grid grid-cols-1 md:grid-cols-2 gap-6">
+      {/* Portfolio Performance Card */}
+      <div className="bg-[#161B22] rounded-2xl p-6 shadow-lg col-span-1 md:col-span-2">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-2">
+          <div>
+            <h2 className="text-lg font-semibold text-white mb-1">Portfolio performance</h2>
+            <div className="flex items-end gap-3">
+              <span className="text-3xl font-bold text-emerald-200">${currentValue.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+              <span className={`text-sm font-semibold ${percentChange >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{percentChange >= 0 ? '+' : ''}{percentChange.toFixed(2)}%</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 mt-4 md:mt-0">
+            <button onClick={handleOpenPopup} className="text-gray-300 hover:text-emerald-400" title="Set Initial Capital">
+              <span className="material-icons">settings</span>
+            </button>
+            <div className="relative">
+              <button
+                className="bg-[#23272F] text-gray-200 px-3 py-1 rounded flex items-center gap-2 border border-[#30363D] hover:bg-emerald-900"
+                onClick={() => setDropdownOpen(!dropdownOpen)}
+              >
+                {filterOptions.find(o => o.value === selectedRange)?.label || 'ALL'}
+                <span className="material-icons text-base">expand_more</span>
+              </button>
+              {dropdownOpen && (
+                <div className="absolute right-0 mt-2 w-36 bg-[#23272F] border border-[#30363D] rounded shadow-lg z-10">
+                  {filterOptions.map(opt => (
+                    <div
+                      key={opt.value}
+                      className={`px-4 py-2 cursor-pointer hover:bg-emerald-900 ${selectedRange === opt.value ? 'text-emerald-400' : 'text-gray-200'}`}
+                      onClick={() => { setSelectedRange(opt.value); setDropdownOpen(false); }}
+                    >
+                      {opt.label}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+        <div className="h-64">
+          <Line options={chartOptions} data={portfolioData} />
+        </div>
       </div>
-      <p className="text-gray-400">Welcome to your dashboard!</p>
 
-      <div className="mb-4">
-        <span className="text-lg text-emerald-400">Initial Capital: ${initialCapital}</span>
+      {/* Investments Placeholder Card */}
+      <div className="bg-[#161B22] rounded-2xl p-6 shadow-lg flex flex-col items-center">
+        <h2 className="text-lg font-semibold text-white mb-2">Investments</h2>
+        <div className="w-40 h-40 mx-auto">
+          <Doughnut data={investmentsData} options={investmentsOptions} />
+        </div>
+        <div className="mt-4 w-full flex flex-col gap-1">
+          <div className="flex justify-between text-xs text-gray-400"><span>6 months</span><span>$6,251.68</span></div>
+          <div className="flex justify-between text-xs text-gray-400"><span>12 months</span><span>$1,096.79</span></div>
+          <div className="flex justify-between text-xs text-gray-400"><span>24 months</span><span>$3,619.39</span></div>
+        </div>
       </div>
 
-      <div className="flex gap-2 mb-4">
-        {['ALL', 'YTD', '1W', '1M', '3M'].map(range => (
-          <button
-            key={range}
-            className={`px-3 py-1 rounded text-sm font-medium border transition-colors duration-150 ${selectedRange === range ? 'bg-emerald-400 text-black border-emerald-400' : 'bg-[#161B22] text-gray-300 border-[#30363D] hover:bg-emerald-900'}`}
-            onClick={() => setSelectedRange(range)}
-          >
-            {range}
-          </button>
-        ))}
+      {/* Earnings Card */}
+      <div className="bg-[#161B22] rounded-2xl p-6 shadow-lg flex flex-col">
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-lg font-semibold text-white">Earnings</h2>
+          <div className="relative">
+            <button
+              className="bg-[#23272F] text-gray-200 px-3 py-1 rounded flex items-center gap-2 border border-[#30363D] hover:bg-emerald-900"
+              onClick={() => setDropdownOpen(dropdownOpen === 'earnings' ? false : 'earnings')}
+            >
+              {earningsOptions.find(o => o.value === earningsRange)?.label || '6 months'}
+              <span className="material-icons text-base">expand_more</span>
+            </button>
+            {dropdownOpen === 'earnings' && (
+              <div className="absolute right-0 mt-2 w-36 bg-[#23272F] border border-[#30363D] rounded shadow-lg z-10">
+                {earningsOptions.map(opt => (
+                  <div
+                    key={opt.value}
+                    className={`px-4 py-2 cursor-pointer hover:bg-emerald-900 ${earningsRange === opt.value ? 'text-emerald-400' : 'text-gray-200'}`}
+                    onClick={() => { setEarningsRange(opt.value); setDropdownOpen(false); }}
+                  >
+                    {opt.label}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="flex items-end gap-2 mb-2">
+          <span className="text-2xl font-bold text-emerald-200">${earningsBar.data.reduce((a, b) => a + b, 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+          <span className="text-xs text-gray-400">USD</span>
+        </div>
+        <div className="h-40">
+          <Bar options={earningsBarOptions} data={earningsBarData} />
+        </div>
       </div>
 
-      <div className="chart-container">
-        <Line options={chartOptions} data={portfolioData} />
-      </div>
-
+      {/* Initial Capital Popup */}
       {showPopup && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center" role="dialog" aria-modal="true">
           <div className="bg-[#161B22] border border-[#30363D] rounded-lg p-6 w-96">
