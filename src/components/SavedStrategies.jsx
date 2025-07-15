@@ -108,6 +108,9 @@ const SavedStrategies = () => {
   const [error, setError] = useState(null);
   const [initialCapital, setInitialCapital] = useState(0);
   const [user, setUser] = useState(null);
+  // Pagination state
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [page, setPage] = useState(1);
 
 
   // Load strategies from Supabase
@@ -315,6 +318,34 @@ const SavedStrategies = () => {
           <h3 className="text-lg font-semibold text-emerald-400">Total ROI: {calculateTotalRoi().toFixed(2)}%</h3>
         </div>
 
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-2">
+          <label htmlFor="rowsPerPage" className="text-xs text-gray-400">Rows per page:</label>
+          <select
+            id="rowsPerPage"
+            className="bg-[#23272F] text-gray-200 px-2 py-1 rounded border border-[#30363D] text-xs"
+            value={rowsPerPage}
+            onChange={e => { setRowsPerPage(Number(e.target.value)); setPage(1); }}
+          >
+            <option value={10}>10</option>
+            <option value={20}>20</option>
+            <option value={50}>50</option>
+          </select>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            className="px-2 py-1 text-xs rounded bg-[#23272F] border border-[#30363D] text-gray-200 disabled:opacity-50"
+            onClick={() => setPage(p => Math.max(1, p - 1))}
+            disabled={page === 1}
+          >Prev</button>
+          <span className="text-xs text-gray-400">Page {page} of {Math.ceil(strategies.length / rowsPerPage) || 1}</span>
+          <button
+            className="px-2 py-1 text-xs rounded bg-[#23272F] border border-[#30363D] text-gray-200 disabled:opacity-50"
+            onClick={() => setPage(p => Math.min(Math.ceil(strategies.length / rowsPerPage), p + 1))}
+            disabled={page === Math.ceil(strategies.length / rowsPerPage) || strategies.length === 0}
+          >Next</button>
+        </div>
+      </div>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[1200px]">
           <thead>
@@ -337,7 +368,7 @@ const SavedStrategies = () => {
             </tr>
           </thead>
           <tbody className="[&>*:nth-child(even)]:bg-gray-850">
-            {strategies.map((strategy) => {
+            {strategies.slice((page - 1) * rowsPerPage, page * rowsPerPage).map((strategy) => {
               const strategyRoiValue = strategyRoi(strategy);
               return (
                 <tr key={strategy.id} className="hover:bg-gray-700">
