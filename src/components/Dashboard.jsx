@@ -11,7 +11,7 @@ import {
   Legend,
 } from 'chart.js';
 import Input from './Input';
-import { storageService } from '../services/storageService';
+// import { storageService } from '../services/storageService';
 import { supabase } from '../services/supabase';
 
 ChartJS.register(
@@ -48,8 +48,17 @@ const Dashboard = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         setUserId(user.id);
-        const capital = await storageService.getInitialCapital(user.id);
-        setInitialCapital(capital || 0);
+        // Fetch initial capital from user_settings table
+        const { data, error } = await supabase
+          .from('user_settings')
+          .select('initial_capital')
+          .eq('user_id', user.id)
+          .single();
+        if (error && error.code !== 'PGRST116') {
+          // PGRST116 = no rows found, not an error for us
+          console.error('Error fetching initial capital:', error);
+        }
+        setInitialCapital(data?.initial_capital || 0);
       }
     };
     fetchUserAndCapital();
@@ -71,7 +80,14 @@ const Dashboard = () => {
     if (!userId) return;
     const value = parseFloat(inputValue);
     if (!isNaN(value) && value > 0) {
-      await storageService.setInitialCapital(userId, value);
+      // Upsert initial capital to user_settings table
+      const { error } = await supabase
+        .from('user_settings')
+        .upsert({ user_id: userId, initial_capital: value }, { onConflict: 'user_id' });
+      if (error) {
+        console.error('Error saving initial capital:', error);
+        return;
+      }
       setInitialCapital(value);
       setShowPopup(false);
     }

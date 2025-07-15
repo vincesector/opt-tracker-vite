@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { supabase } from '../services/supabase';
 import Select from './Select';
 import Input from './Input';
 import DatePicker from './DatePicker';
@@ -29,6 +30,20 @@ import { storageService } from '../services/storageService';
  * @returns {JSX.Element}
  */
 const StrategyForm = () => {
+  const [user, setUser] = useState(null);
+  useEffect(() => {
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user);
+    };
+    getUser();
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user || null);
+    });
+    return () => {
+      listener?.subscription?.unsubscribe();
+    };
+  }, []);
   const chartRef = useRef(null);
   const chartInstanceRef = useRef(null);
   const [legs, setLegs] = useState([{ id: 1 }]);
@@ -194,13 +209,14 @@ const StrategyForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+    if (!user) {
+      setError('You must be logged in to add a strategy. Please log in or sign up.');
+      return;
+    }
     try {
       setSaving(true);
       setError(null);
-      
       const pnl = tradeOutcome !== 'pending' ? parseFloat(e.target['pnl-amount']?.value) : null;
-
       // Validate required fields
       if (!assetPrice) {
         throw new Error('Asset price is required');
@@ -208,14 +224,12 @@ const StrategyForm = () => {
       if (!marginRequired) {
         throw new Error('Margin required is required');
       }
-
       // Ensure all legs have required fields
       Object.values(legData).forEach((leg, index) => {
         if (!leg.strike || !leg.premium) {
           throw new Error(`Leg ${index + 1} is missing required fields`);
         }
       });
-
       const formData = {
         asset: e.target.asset.value,
         open_date: e.target['open-date'].value,
@@ -233,16 +247,12 @@ const StrategyForm = () => {
         created_at: new Date().toISOString(),
         timestamp: Date.now()
       };
-
       console.log('Submitting form data:', JSON.stringify(formData, null, 2));
-
       const savedStrategy = await storageService.saveStrategy(formData);
       console.log('Strategy saved successfully:', savedStrategy);
       resetForm();
-      
       // Optionally add a small delay to ensure the UI updates
       await new Promise(resolve => setTimeout(resolve, 100));
-      
     } catch (error) {
       console.error('Error saving strategy:', error);
       setError(error.message || 'Failed to save strategy. Please try again.');

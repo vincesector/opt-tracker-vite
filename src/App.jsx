@@ -131,7 +131,15 @@ function App() {
         <main className="flex-grow p-4 lg:p-8">
           <div className="max-w-7xl mx-auto space-y-8">
             <Routes>
-              <Route path="/" element={<StrategyForm />} />
+              <Route path="/" element={
+                <>
+                  {/* Portfolio Stats card removed from here. Now only rendered in SavedStrategies.jsx */}
+                  <StrategyForm />
+                  <div className="mt-8">
+                    <SavedStrategies />
+                  </div>
+                </>
+              } />
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/settings" element={<Settings />} />
             </Routes>

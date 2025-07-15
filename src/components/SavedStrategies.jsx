@@ -1,3 +1,9 @@
+// Helper to calculate ROI for a strategy
+const strategyRoi = (strategy) => {
+  if (!strategy || !strategy.margin_required || strategy.margin_required === 0) return 0;
+  if (typeof strategy.pnl !== 'number') return 0;
+  return (strategy.pnl / strategy.margin_required) * 100;
+};
 import React, { useState, useEffect, useCallback } from 'react';
 import { storageService } from '../services/storageService';
 import { supabase } from '../services/supabase';
@@ -98,10 +104,13 @@ const SavedStrategies = () => {
   const [initialCapital, setInitialCapital] = useState(0);
   const [user, setUser] = useState(null);
 
+
+  // Load strategies from Supabase
   const loadStrategies = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
+      // Only use storageService for strategies, not for initial capital
       const savedStrategies = await storageService.getStrategies();
       setStrategies(savedStrategies);
     } catch (err) {
@@ -110,6 +119,34 @@ const SavedStrategies = () => {
       setLoading(false);
     }
   }, []);
+
+  // Export strategies as CSV
+  const handleExportCSV = () => {
+    if (!strategies.length) return;
+    const replacer = (key, value) => (value === null ? '' : value);
+    const header = [
+      'asset', 'strategy_type', 'open_date', 'close_date', 'legs', 'margin_required', 'asset_price',
+      'max_profit', 'max_loss', 'net_premium', 'trade_outcome', 'pnl', 'roi', 'created_at', 'timestamp'
+    ];
+    const csv = [
+      header.join(','),
+      ...strategies.map(row =>
+        header.map(fieldName => {
+          if (fieldName === 'legs') {
+            return '"' + JSON.stringify(row.legs) + '"';
+          }
+          return JSON.stringify(row[fieldName], replacer);
+        }).join(',')
+      )
+    ].join('\r\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'strategies.csv';
+    a.click();
+    window.URL.revokeObjectURL(url);
+  };
 
   // Load user and initial capital from Supabase
   useEffect(() => {
@@ -171,52 +208,119 @@ const SavedStrategies = () => {
     return (totalPnl / initialCapitalValue) * 100;
   }, [strategies, initialCapital]);
 
+  // Calculate user-specific stats from strategies
+  const stats = React.useMemo(() => {
+    let totalTrades = 0, wins = 0, losses = 0, totalPnL = 0, totalMarginUsed = 0;
+    strategies.forEach(s => {
+      totalTrades++;
+      if (s.trade_outcome === 'profit') wins++;
+      if (s.trade_outcome === 'loss') losses++;
+      if (s.trade_outcome !== 'pending') totalPnL += s.pnl || 0;
+      totalMarginUsed += s.margin_required ? Number(s.margin_required) : 0;
+    });
+    const roi = initialCapital && initialCapital !== 0 ? (totalPnL / initialCapital) * 100 : 0;
+    return { totalTrades, wins, losses, totalPnL, totalMarginUsed, roi };
+  }, [strategies, initialCapital]);
+
+  const formatCurrency = (value) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+    }).format(value);
+  };
+
   if (!user) {
     return <LoginPage />;
   }
+
   return (
-    <div className="card p-6 rounded-xl">
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-semibold text-emerald-400 flex items-center">
-          <span className="material-icons mr-2">history</span>
-          Saved Strategies
-        </h2>
-        <div className="flex space-x-2">
-          <button
-            onClick={handleExportCSV}
-            className="btn btn-secondary text-xs py-1 px-2 flex items-center space-x-1"
-          >
-            <span className="material-icons text-sm">file_download</span>
-            <span>Export CSV</span>
-          </button>
+    <>
+      <div className="card p-4 mb-8 flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0 md:space-x-6">
+        <div className="flex flex-wrap gap-4 w-full justify-between">
+          <div className="flex items-center gap-2">
+            <span className="material-icons text-blue-400">insights</span>
+            <span className="text-[#8B949E] text-sm">Total Trades:</span>
+            <span className="font-bold text-base">{stats.totalTrades}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="material-icons text-green-400">check_circle</span>
+            <span className="text-[#8B949E] text-sm">Wins:</span>
+            <span className="font-bold text-green-400 text-base">{stats.wins}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="material-icons text-red-400">cancel</span>
+            <span className="text-[#8B949E] text-sm">Losses:</span>
+            <span className="font-bold text-red-400 text-base">{stats.losses}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="material-icons text-yellow-400">account_balance_wallet</span>
+            <span className="text-[#8B949E] text-sm">Total Margin Used:</span>
+            <span className="font-bold text-base">{formatCurrency(stats.totalMarginUsed)}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="material-icons text-pink-400">trending_down</span>
+            <span className="text-[#8B949E] text-sm">Net P&amp;L:</span>
+            <span className={`font-bold text-base ${stats.totalPnL < 0 ? 'text-red-400' : 'text-green-400'}`}>{formatCurrency(stats.totalPnL)}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="material-icons text-purple-400">percent</span>
+            <span className="text-[#8B949E] text-sm">Overall ROI:</span>
+            <span className={`font-bold text-base ${stats.roi < 0 ? 'text-red-400' : 'text-green-400'}`}>{stats.roi.toFixed(2)}%</span>
+          </div>
         </div>
       </div>
 
-      <div className="mb-4">
-        <label htmlFor="initialCapital" className="block text-sm font-medium mb-2 text-[#C9D1D9]">Initial Capital</label>
-        <Input
-          type="number"
-          id="initialCapital"
-          className="input-field"
-          value={initialCapital}
-          onChange={async (e) => {
-            const value = e.target.value;
-            setInitialCapital(value);
-            if (user) {
-              // Upsert initial capital for this user
-              await supabase.from('user_settings').upsert({
-                user_id: user.id,
-                initial_capital: value,
-                updated_at: new Date().toISOString(),
-              }, { onConflict: ['user_id'] });
-            }
-          }}
-        />
-      </div>
+      <div className="card p-6 rounded-xl">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-semibold text-emerald-400 flex items-center">
+            <span className="material-icons mr-2">history</span>
+            Saved Strategies
+          </h2>
+          <div className="flex space-x-2">
+            <button
+              onClick={handleExportCSV}
+              className="btn btn-secondary text-xs py-1 px-2 flex items-center space-x-1"
+            >
+              <span className="material-icons text-sm">file_download</span>
+              <span>Export CSV</span>
+            </button>
+          </div>
+        </div>
 
-      <div className="mb-4">
-        <h3 className="text-lg font-semibold text-emerald-400">Total ROI: {calculateTotalRoi().toFixed(2)}%</h3>
-      </div>
+        <div className="mb-4">
+          <label htmlFor="initialCapital" className="block text-sm font-medium mb-2 text-[#C9D1D9]">Initial Capital</label>
+          <Input
+            type="number"
+            id="initialCapital"
+            className="input-field"
+            value={initialCapital}
+            onChange={async (e) => {
+              const value = parseFloat(e.target.value);
+              setInitialCapital(value);
+              if (user) {
+                // Upsert initial capital for this user as numeric
+                await supabase.from('user_settings').upsert({
+                  user_id: user.id,
+                  initial_capital: value,
+                  updated_at: new Date().toISOString(),
+                }, { onConflict: ['user_id'] });
+                // Reload from DB to ensure sync
+                const { data, error } = await supabase
+                  .from('user_settings')
+                  .select('initial_capital')
+                  .eq('user_id', user.id)
+                  .single();
+                if (!error && data && data.initial_capital !== null) {
+                  setInitialCapital(data.initial_capital);
+                }
+              }
+            }}
+          />
+        </div>
+
+        <div className="mb-4">
+          <h3 className="text-lg font-semibold text-emerald-400">Total ROI: {calculateTotalRoi().toFixed(2)}%</h3>
+        </div>
 
       <div className="overflow-x-auto">
         <table className="w-full min-w-[1200px]">
@@ -313,9 +417,21 @@ const SavedStrategies = () => {
         isOpen={!!editingStrategy}
         onClose={() => setEditingStrategy(null)}
         strategy={editingStrategy || {}}
-        onUpdate={handleUpdate}
+        onUpdate={async (id, updatedStrategy) => {
+          // Update strategy in Supabase and reload
+          try {
+            await supabase
+              .from('strategies')
+              .update(updatedStrategy)
+              .eq('id', id);
+            loadStrategies();
+          } catch (err) {
+            setError('Failed to update strategy');
+          }
+        }}
       />
     </div>
+      </>
   );
 }
 

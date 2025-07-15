@@ -23,6 +23,7 @@
     @apply bg-[#161B22] border border-[#30363D] rounded-lg;
   }
 
+
   .btn {
     @apply inline-flex items-center justify-center rounded-lg transition-colors font-medium;
   }
