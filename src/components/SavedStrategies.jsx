@@ -11,9 +11,14 @@ import Select from './Select';
 import Input from './Input';
 import { calculateStrategyMetrics } from '../utils/strategyCalculations';
 import LoginPage from './LoginPage';
-const formatDate = (dateString) => {
+// Short date format: DD/MM/YY
+const shortDate = (dateString) => {
   if (!dateString) return '';
-  return new Date(dateString).toLocaleDateString();
+  const d = new Date(dateString);
+  const day = d.getDate().toString().padStart(2, '0');
+  const month = (d.getMonth() + 1).toString().padStart(2, '0');
+  const year = d.getFullYear().toString().slice(-2);
+  return `${day}/${month}/${year}`;
 };
 
 const TradeOutcomePopup = ({ isOpen, onClose, strategy, onUpdate }) => {
@@ -314,21 +319,21 @@ const SavedStrategies = () => {
         <table className="w-full min-w-[1200px]">
           <thead>
             <tr>
-              <th className="table-header">Asset</th>
-              <th className="table-header">Strategy</th>
-              <th className="table-header">Open Date</th>
-              <th className="table-header">Close Date</th>
-              <th className="table-header">Legs</th>
-              <th className="table-header text-right">Total Contracts</th>
-              <th className="table-header text-right">Net Premium</th>
-              <th className="table-header text-right">Max Profit</th>
-              <th className="table-header text-right">Max Loss</th>
-              <th className="table-header text-right">Margin Used</th>
-              <th className="table-header text-right">Entry Price</th>
-              <th className="table-header text-center">Status</th>
-              <th className="table-header text-right">P&L</th>
-              <th className="table-header text-right">ROI</th>
-              <th className="table-header text-center">Actions</th>
+              <th className="table-header px-2">Asset</th>
+              <th className="table-header px-2">Strat</th>
+              <th className="table-header px-2">Open</th>
+              <th className="table-header px-2">Close</th>
+              <th className="table-header px-2">Legs</th>
+              <th className="table-header px-2 text-right">Contracts</th>
+              <th className="table-header px-2 text-right">Premium</th>
+              <th className="table-header px-2 text-right">Profit</th>
+              <th className="table-header px-2 text-right">Loss</th>
+              <th className="table-header px-2 text-right">Margin</th>
+              <th className="table-header px-2 text-right">Entry</th>
+              <th className="table-header px-2 text-center">Status</th>
+              <th className="table-header px-2 text-right">P&L</th>
+              <th className="table-header px-2 text-right">ROI</th>
+              <th className="table-header px-2 text-center">Actions</th>
             </tr>
           </thead>
           <tbody className="[&>*:nth-child(even)]:bg-gray-850">
@@ -336,36 +341,36 @@ const SavedStrategies = () => {
               const strategyRoiValue = strategyRoi(strategy);
               return (
                 <tr key={strategy.id} className="hover:bg-gray-700">
-                  <td className="table-cell py-3 px-4">{strategy.asset}</td>
-                  <td className="table-cell py-3 px-4">{strategy.strategy_type}</td>
-                  <td className="table-cell py-3 px-4">{formatDate(strategy.open_date)}</td>
-                  <td className="table-cell py-3 px-4">{formatDate(strategy.close_date)}</td>
-                  <td className="table-cell py-3 px-4">{strategy.legs.length}</td>
-                  <td className="table-cell py-3 px-4 text-right">
+                  <td className="table-cell py-2 px-2">{strategy.asset}</td>
+                  <td className="table-cell py-2 px-2">{strategy.strategy_type}</td>
+                  <td className="table-cell py-2 px-2">{shortDate(strategy.open_date)}</td>
+                  <td className="table-cell py-2 px-2">{shortDate(strategy.close_date)}</td>
+                  <td className="table-cell py-2 px-2">{strategy.legs.length}</td>
+                  <td className="table-cell py-2 px-2 text-right">
                     {strategy.legs.reduce((sum, leg) => sum + parseInt(leg.contracts), 0)}
                   </td>
-                  <td className="table-cell py-3 px-4 text-right">${strategy.net_premium}</td>
-                  <td className="table-cell py-3 px-4 text-right">
-                    {strategy.max_profit === 'Unlimited' ? 'Unlimited' : `$${strategy.max_profit}`}
+                  <td className="table-cell py-2 px-2 text-right">${strategy.net_premium}</td>
+                  <td className="table-cell py-2 px-2 text-right">
+                    {strategy.max_profit === 'Unlimited' ? 'Unl.' : `$${strategy.max_profit}`}
                   </td>
-                  <td className="table-cell py-3 px-4 text-right">
-                    {strategy.max_loss === 'Unlimited' ? 'Unlimited' : `-$${Math.abs(strategy.max_loss)}`}
+                  <td className="table-cell py-2 px-2 text-right">
+                    {strategy.max_loss === 'Unlimited' ? 'Unl.' : `-$${Math.abs(strategy.max_loss)}`}
                   </td>
-                  <td className="table-cell py-3 px-4 text-right">${strategy.margin_required}</td>
-                  <td className="table-cell py-3 px-4 text-right">${strategy.asset_price}</td>
-                  <td className="table-cell py-3 px-4 text-center">
+                  <td className="table-cell py-2 px-2 text-right">${strategy.margin_required}</td>
+                  <td className="table-cell py-2 px-2 text-right">${strategy.asset_price}</td>
+                  <td className="table-cell py-2 px-2 text-center">
                     <span className={`tag ${strategy.trade_outcome === 'profit' ? 'tag-profit' : strategy.trade_outcome === 'loss' ? 'tag-loss' : 'bg-[#30363D] text-[#8B949E]'}`}>
                       {strategy.trade_outcome.charAt(0).toUpperCase() + strategy.trade_outcome.slice(1)}
                     </span>
                   </td>
-                  <td className="table-cell py-3 px-4 text-right">
+                  <td className="table-cell py-2 px-2 text-right">
                     {strategy.trade_outcome !== 'pending' ? (
                       <span className={strategy.trade_outcome === 'loss' ? 'text-red-400' : 'text-green-400'}>
                         {strategy.trade_outcome === 'loss' ? '-' : ''}${Math.abs(strategy.pnl).toFixed(2)}
                       </span>
                     ) : ''}
                   </td>
-                  <td className="table-cell py-3 px-4 text-right">
+                  <td className="table-cell py-2 px-2 text-right">
                     {strategy.trade_outcome === 'pending' ? (
                       <span className="text-[#8B949E]">
                         Max: {((strategy.max_profit / strategy.margin_required) * 100).toFixed(2)}%
@@ -376,8 +381,8 @@ const SavedStrategies = () => {
                       </span>
                     )}
                   </td>
-                  <td className="table-cell py-3 px-4 text-center">
-                    <div className="flex justify-center space-x-2">
+                  <td className="table-cell py-2 px-2 text-center">
+                    <div className="flex justify-center space-x-1">
                       <button
                         onClick={() => setEditingStrategy(strategy)}
                         className="btn btn-secondary p-1"

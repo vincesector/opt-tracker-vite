@@ -360,6 +360,9 @@ const Dashboard = () => {
             <h2 className="text-lg font-semibold text-white mb-1">Portfolio performance</h2>
             <div className="flex items-end gap-3">
               <span className="text-3xl font-bold text-emerald-200">${currentValue.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+              <span className={`text-base font-semibold ${currentValue - startValue >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                {currentValue - startValue >= 0 ? '+' : ''}${Math.abs(currentValue - startValue).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+              </span>
               <span className={`text-sm font-semibold ${percentChange >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{percentChange >= 0 ? '+' : ''}{percentChange.toFixed(2)}%</span>
             </div>
           </div>
