@@ -82,10 +82,9 @@ const StrategyForm = () => {
       setStrategyName('N/A');
       return;
 // ...existing code...
-import collateralIcon from '../assets/collateral.png';
     }
 
-                    <img src={collateralIcon} alt="Collateral" className="w-6 h-6" />
+                    <span className="font-semibold text-xs text-gray-400 ml-1">Cltrl</span>
     const currentMarginRequired = parseFloat(marginRequired);
 
     const newMetrics = calculateStrategyMetrics(
