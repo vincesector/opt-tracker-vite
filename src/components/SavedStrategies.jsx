@@ -5,6 +5,7 @@ const strategyRoi = (strategy) => {
   return (strategy.pnl / strategy.margin_required) * 100;
 };
 import React, { useState, useEffect, useCallback } from 'react';
+import collateralIcon from '../assets/collateral.png';
 import { storageService } from '../services/storageService';
 import { supabase } from '../services/supabase';
 import Select from './Select';
@@ -431,6 +432,15 @@ const SavedStrategies = () => {
                       >
                         <span className="material-icons text-sm">delete</span>
                       </button>
+                    </div>
+                  </td>
+                  <td className="table-cell py-2 px-2 text-center">
+                    <div className="flex items-center justify-center">
+                      <div className="relative group">
+                        <img src={collateralIcon} alt="Collateral" className="w-6 h-6" />
+                        <span className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 px-2 py-1 rounded bg-[#23272F] text-xs text-gray-200 opacity-0 group-hover:opacity-100 transition pointer-events-none whitespace-nowrap z-20 border border-[#30363D]">collateral</span>
+                      </div>
+                      <span className="ml-2 text-xs text-gray-400">{strategy.collateral || 'BTC'}</span>
                     </div>
                   </td>
                 </tr>

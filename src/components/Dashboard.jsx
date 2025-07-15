@@ -10,6 +10,7 @@ import {
   Tooltip,
   Legend,
 } from 'chart.js';
+import collateralIcon from '../assets/collateral.png';
 import Input from './Input';
 // import { storageService } from '../services/storageService';
 import { supabase, db } from '../services/supabase';
@@ -183,6 +184,13 @@ const Dashboard = () => {
     const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
     return weekNo;
   }
+      {/* Collateral Icon with Tooltip */}
+      <div className="flex items-center mb-4">
+        <div className="relative group">
+          <img src={collateralIcon} alt="Collateral" className="w-7 h-7 mr-2" />
+          <span className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 px-2 py-1 rounded bg-[#23272F] text-xs text-gray-200 opacity-0 group-hover:opacity-100 transition pointer-events-none whitespace-nowrap z-20 border border-[#30363D]">collateral</span>
+        </div>
+      </div>
 
   // Update chart data when strategies, initialCapital, or selectedRange changes
   useEffect(() => {
@@ -192,6 +200,11 @@ const Dashboard = () => {
     const labels = series.map(p => p.date.toLocaleDateString());
     const data = series.map(p => p.value);
     setPortfolioData({
+              {/* Collateral icon next to stats */}
+              <div className="relative group">
+                <img src={collateralIcon} alt="Collateral" className="w-6 h-6 ml-2" />
+                <span className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 px-2 py-1 rounded bg-[#23272F] text-xs text-gray-200 opacity-0 group-hover:opacity-100 transition pointer-events-none whitespace-nowrap z-20 border border-[#30363D]">collateral</span>
+              </div>
       labels,
       datasets: [
         {
@@ -364,6 +377,11 @@ const Dashboard = () => {
                 {currentValue - startValue > 0 ? '+' : currentValue - startValue < 0 ? '-' : ''}${Math.abs(currentValue - startValue).toLocaleString(undefined, { maximumFractionDigits: 2 })}
               </span>
               <span className={`text-sm font-semibold ${percentChange >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{percentChange >= 0 ? '+' : ''}{percentChange.toFixed(2)}%</span>
+              {/* Collateral icon with tooltip */}
+              <div className="relative group flex items-center">
+                <img src={collateralIcon} alt="Collateral" className="w-6 h-6 ml-2" />
+                <span className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 px-2 py-1 rounded bg-[#23272F] text-xs text-gray-200 opacity-0 group-hover:opacity-100 transition pointer-events-none whitespace-nowrap z-20 border border-[#30363D]">collateral</span>
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-2 mt-4 md:mt-0">

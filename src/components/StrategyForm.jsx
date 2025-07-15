@@ -51,6 +51,7 @@ const StrategyForm = () => {
   const [strategyName, setStrategyName] = useState(''); // Changed from strategyType
   const [tradeOutcome, setTradeOutcome] = useState('pending');
   const [asset, setAsset] = useState('');
+  const [collateral, setCollateral] = useState('BTC');
   const [assetPrice, setAssetPrice] = useState('');
   const [marginRequired, setMarginRequired] = useState('');
   const [metrics, setMetrics] = useState({
@@ -232,6 +233,7 @@ const StrategyForm = () => {
       });
       const formData = {
         asset: e.target.asset.value,
+        collateral,
         open_date: e.target['open-date'].value,
         close_date: e.target['close-date'].value || null,
         strategy_type: metrics.strategyName, // Use metrics.strategyName
@@ -279,25 +281,48 @@ const StrategyForm = () => {
           </h2>
           <div className="space-y-6">
             {/* Asset Selection */}
-            <div className="border-b border-gray-700 pb-4">
-              <label
-                htmlFor="asset"
-                className="block text-sm font-medium mb-2 text-[#C9D1D9]"
-              >
-                Asset
-              </label>
-              <Select
-                id="asset"
-                name="asset"
-                value={asset}
-                onChange={(e) => setAsset(e.target.value)} // Use the state setter
-                required
-              >
-                <option value="">Select Asset</option>
-                <option value="BTC">BTC</option>
-                <option value="ETH">ETH</option>
-                <option value="SOL">SOL</option>
-              </Select>
+            <div className="border-b border-gray-700 pb-4 flex flex-col md:flex-row gap-6 items-end">
+              <div className="flex-1">
+                <label
+                  htmlFor="asset"
+                  className="block text-sm font-medium mb-2 text-[#C9D1D9]"
+                >
+                  Asset
+                </label>
+                <Select
+                  id="asset"
+                  name="asset"
+                  value={asset}
+                  onChange={(e) => setAsset(e.target.value)} // Use the state setter
+                  required
+                >
+                  <option value="">Select Asset</option>
+                  <option value="BTC">BTC</option>
+                  <option value="ETH">ETH</option>
+                  <option value="SOL">SOL</option>
+                </Select>
+              </div>
+              <div className="flex-1">
+                <label htmlFor="collateral" className="block text-sm font-medium mb-2 text-[#C9D1D9]">Collateral</label>
+                <div className="flex items-center gap-2">
+                  <Select
+                    id="collateral"
+                    name="collateral"
+                    value={collateral}
+                    onChange={e => setCollateral(e.target.value)}
+                    required
+                  >
+                    <option value="BTC">BTC</option>
+                    <option value="ETH">ETH</option>
+                    <option value="SOL">SOL</option>
+                    <option value="USD">USD</option>
+                  </Select>
+                  <div className="relative group">
+                    <img src={require('../assets/collateral.png')} alt="Collateral" className="w-6 h-6" />
+                    <span className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 px-2 py-1 rounded bg-[#23272F] text-xs text-gray-200 opacity-0 group-hover:opacity-100 transition pointer-events-none whitespace-nowrap z-20 border border-[#30363D]">collateral</span>
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Date Fields */}
