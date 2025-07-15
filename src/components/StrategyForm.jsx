@@ -81,8 +81,6 @@ const StrategyForm = () => {
       });
       setStrategyName('N/A');
       return;
-// ...existing imports...
-// ...existing imports...
 import collateralIcon from '../assets/collateral.png';
     }
 
