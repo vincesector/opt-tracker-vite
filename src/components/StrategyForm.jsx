@@ -81,9 +81,11 @@ const StrategyForm = () => {
       });
       setStrategyName('N/A');
       return;
+// ...existing imports...
+import collateralIcon from '../assets/collateral.png';
     }
 
-    const currentAssetPrice = parseFloat(assetPrice);
+                    <img src={collateralIcon} alt="Collateral" className="w-6 h-6" />
     const currentMarginRequired = parseFloat(marginRequired);
 
     const newMetrics = calculateStrategyMetrics(
