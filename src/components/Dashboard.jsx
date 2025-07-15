@@ -34,7 +34,7 @@ const Dashboard = () => {
   const [strategies, setStrategies] = useState([]);
   const [selectedRange, setSelectedRange] = useState('ALL');
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [earningsRange, setEarningsRange] = useState('6M');
+  const [earningsRange, setEarningsRange] = useState('monthly');
 
   useEffect(() => {
     // Get current user, initial capital, and strategies
@@ -109,27 +109,75 @@ const Dashboard = () => {
   }
 
   // Helper: build earnings bar chart data
-  function buildEarningsData(strategies, range) {
-    // Group by month for the selected range
-    const filtered = filterByRange(strategies, range);
-    const earningsByMonth = {};
+  function buildEarningsData(strategies, mode) {
+    // Group by day, week, or month for the selected mode
+    const now = new Date();
+    let fromDate = null;
+    if (mode === 'daily') {
+      fromDate = new Date(now);
+      fromDate.setDate(now.getDate() - 7);
+    } else if (mode === 'weekly') {
+      fromDate = new Date(now);
+      fromDate.setMonth(now.getMonth() - 3);
+    } else if (mode === 'monthly') {
+      fromDate = new Date(now);
+      fromDate.setMonth(now.getMonth() - 12);
+    }
+    const filtered = strategies.filter(s => {
+      if (!s.close_date) return false;
+      const close = new Date(s.close_date);
+      return !fromDate || (close >= fromDate && close <= now);
+    });
+    const earnings = {};
     filtered.forEach(s => {
       if (!s.close_date || typeof s.pnl !== 'number') return;
       const d = new Date(s.close_date);
-      const label = `${d.toLocaleString('default', { month: 'short' })} ${d.getFullYear()}`;
-      if (!earningsByMonth[label]) earningsByMonth[label] = 0;
-      earningsByMonth[label] += s.pnl;
+      let label = '';
+      if (mode === 'daily') {
+        label = d.toLocaleDateString();
+      } else if (mode === 'weekly') {
+        // Get ISO week string
+        const week = getISOWeek(d);
+        label = `${week} ${d.getFullYear()}`;
+      } else {
+        label = `${d.toLocaleString('default', { month: 'short' })} ${d.getFullYear()}`;
+      }
+      if (!earnings[label]) earnings[label] = 0;
+      earnings[label] += s.pnl;
     });
     // Sort labels chronologically
-    const labels = Object.keys(earningsByMonth).sort((a, b) => {
-      const [ma, ya] = a.split(' ');
-      const [mb, yb] = b.split(' ');
-      const da = new Date(`${ma} 1, ${ya}`);
-      const db = new Date(`${mb} 1, ${yb}`);
-      return da - db;
-    });
-    const data = labels.map(l => earningsByMonth[l]);
+    let labels = Object.keys(earnings);
+    if (mode === 'weekly') {
+      labels = labels.sort((a, b) => {
+        const [wa, ya] = a.split(' ');
+        const [wb, yb] = b.split(' ');
+        const da = new Date(`${ya}-W${wa}`);
+        const db = new Date(`${yb}-W${wb}`);
+        return da - db;
+      });
+    } else if (mode === 'monthly') {
+      labels = labels.sort((a, b) => {
+        const [ma, ya] = a.split(' ');
+        const [mb, yb] = b.split(' ');
+        const da = new Date(`${ma} 1, ${ya}`);
+        const db = new Date(`${mb} 1, ${yb}`);
+        return da - db;
+      });
+    } else {
+      labels = labels.sort((a, b) => new Date(a) - new Date(b));
+    }
+    const data = labels.map(l => earnings[l]);
     return { labels, data };
+  }
+
+  // Helper for ISO week number
+  function getISOWeek(date) {
+    const d = new Date(date.getTime());
+    d.setHours(0, 0, 0, 0);
+    d.setDate(d.getDate() + 4 - (d.getDay() || 7));
+    const yearStart = new Date(d.getFullYear(), 0, 1);
+    const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+    return weekNo;
   }
 
   // Update chart data when strategies, initialCapital, or selectedRange changes
@@ -294,15 +342,15 @@ const Dashboard = () => {
     { label: '3 months', value: '3M' },
   ];
   const earningsOptions = [
-    { label: '6 months', value: '6M' },
-    { label: '12 months', value: '12M' },
-    { label: '24 months', value: '24M' },
+    { label: 'Daily', value: 'daily' },
+    { label: 'Weekly', value: 'weekly' },
+    { label: 'Monthly', value: 'monthly' },
   ];
 
   return (
     <div className="container mx-auto p-4 grid grid-cols-1 md:grid-cols-2 gap-6">
       {/* Portfolio Performance Card */}
-      <div className="bg-[#161B22] rounded-2xl p-6 shadow-lg col-span-1 md:col-span-2">
+      <div className="bg-[#161B22] rounded-2xl p-6 shadow-lg col-span-1 md:col-span-2 flex flex-col h-[420px] min-h-[320px]">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-2">
           <div>
             <h2 className="text-lg font-semibold text-white mb-1">Portfolio performance</h2>
@@ -339,8 +387,20 @@ const Dashboard = () => {
             </div>
           </div>
         </div>
-        <div className="h-64">
-          <Line options={chartOptions} data={portfolioData} />
+        <div className="flex-1 w-full flex items-end">
+          <Line options={{
+            ...chartOptions,
+            maintainAspectRatio: false,
+            responsive: true,
+            plugins: {
+              ...chartOptions.plugins,
+              legend: { ...chartOptions.plugins.legend, align: 'start' },
+            },
+            layout: { padding: 0 },
+          }}
+          data={portfolioData}
+          height={null}
+          />
         </div>
       </div>
 
@@ -358,7 +418,7 @@ const Dashboard = () => {
       </div>
 
       {/* Earnings Card */}
-      <div className="bg-[#161B22] rounded-2xl p-6 shadow-lg flex flex-col">
+      <div className="bg-[#161B22] rounded-2xl p-6 shadow-lg flex flex-col h-[320px] min-h-[240px]">
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-lg font-semibold text-white">Earnings</h2>
           <div className="relative">
@@ -366,7 +426,7 @@ const Dashboard = () => {
               className="bg-[#23272F] text-gray-200 px-3 py-1 rounded flex items-center gap-2 border border-[#30363D] hover:bg-emerald-900"
               onClick={() => setDropdownOpen(dropdownOpen === 'earnings' ? false : 'earnings')}
             >
-              {earningsOptions.find(o => o.value === earningsRange)?.label || '6 months'}
+              {earningsOptions.find(o => o.value === earningsRange)?.label || 'Monthly'}
               <span className="material-icons text-base">expand_more</span>
             </button>
             {dropdownOpen === 'earnings' && (
@@ -388,8 +448,16 @@ const Dashboard = () => {
           <span className="text-2xl font-bold text-emerald-200">${earningsBar.data.reduce((a, b) => a + b, 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
           <span className="text-xs text-gray-400">USD</span>
         </div>
-        <div className="h-40">
-          <Bar options={earningsBarOptions} data={earningsBarData} />
+        <div className="flex-1 w-full flex items-end">
+          <Bar options={{
+            ...earningsBarOptions,
+            maintainAspectRatio: false,
+            responsive: true,
+            layout: { padding: 0 },
+          }}
+          data={earningsBarData}
+          height={null}
+          />
         </div>
       </div>
 
