@@ -129,6 +129,7 @@ const Dashboard = () => {
       return !fromDate || (close >= fromDate && close <= now);
     });
     const earnings = {};
+    const weekStartDates = {};
     filtered.forEach(s => {
       if (!s.close_date || typeof s.pnl !== 'number') return;
       const d = new Date(s.close_date);
@@ -136,9 +137,10 @@ const Dashboard = () => {
       if (mode === 'daily') {
         label = d.toLocaleDateString();
       } else if (mode === 'weekly') {
-        // Get ISO week string
-        const week = getISOWeek(d);
-        label = `${week} ${d.getFullYear()}`;
+        // Get start date of ISO week
+        const weekStart = getISOWeekStart(d);
+        label = `${weekStart.getDate().toString().padStart(2, '0')} ${weekStart.toLocaleString('default', { month: 'short' })} ${weekStart.getFullYear().toString().slice(-2)}`;
+        weekStartDates[label] = weekStart;
       } else {
         label = `${d.toLocaleString('default', { month: 'short' })} ${d.getFullYear()}`;
       }
@@ -148,19 +150,13 @@ const Dashboard = () => {
     // Sort labels chronologically
     let labels = Object.keys(earnings);
     if (mode === 'weekly') {
-      labels = labels.sort((a, b) => {
-        const [wa, ya] = a.split(' ');
-        const [wb, yb] = b.split(' ');
-        const da = new Date(`${ya}-W${wa}`);
-        const db = new Date(`${yb}-W${wb}`);
-        return da - db;
-      });
+      labels = labels.sort((a, b) => weekStartDates[a] - weekStartDates[b]);
     } else if (mode === 'monthly') {
       labels = labels.sort((a, b) => {
         const [ma, ya] = a.split(' ');
         const [mb, yb] = b.split(' ');
-        const da = new Date(`${ma} 1, ${ya}`);
-        const db = new Date(`${mb} 1, ${yb}`);
+        const da = new Date(`${ma} 1, 20${ya}`);
+        const db = new Date(`${mb} 1, 20${yb}`);
         return da - db;
       });
     } else {
@@ -168,6 +164,14 @@ const Dashboard = () => {
     }
     const data = labels.map(l => earnings[l]);
     return { labels, data };
+  }
+
+  // Helper for ISO week start date
+  function getISOWeekStart(date) {
+    const d = new Date(date);
+    const day = d.getDay();
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is sunday
+    return new Date(d.setDate(diff));
   }
 
   // Helper for ISO week number
