@@ -90,7 +90,9 @@ function App() {
     intervalId = setInterval(fetchPrices, 60000);
     return () => clearInterval(intervalId);
   }, [capital]);
-    // Subscribe to strategy changes to update stats
+
+  // Subscribe to strategy changes to update stats
+  useEffect(() => {
     const subscription = supabase
       .channel('strategies_channel')
       .on('postgres_changes', {
