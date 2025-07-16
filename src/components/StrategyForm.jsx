@@ -50,7 +50,8 @@ const StrategyForm = () => {
   const [legData, setLegData] = useState({ 1: { action: 'Sell', type: 'Call', strike: '', premium: '', contracts: 1 } });
   const [strategyName, setStrategyName] = useState(''); // Changed from strategyType
   const [tradeOutcome, setTradeOutcome] = useState('pending');
-  const [asset, setAsset] = useState('');
+  const [underlyingAsset, setUnderlyingAsset] = useState('');
+  const [settlementAsset, setSettlementAsset] = useState('');
   const [assetPrice, setAssetPrice] = useState('');
   const [marginRequired, setMarginRequired] = useState('');
   const [metrics, setMetrics] = useState({
@@ -187,7 +188,8 @@ const StrategyForm = () => {
     setLegData({ 1: { action: 'Sell', type: 'Call', strike: '', premium: '', contracts: 1 } });
     setStrategyName(''); // Reset strategyName
     setTradeOutcome('pending');
-    setAsset('');
+    setUnderlyingAsset('');
+    setSettlementAsset('');
     setAssetPrice('');
     setMarginRequired('');
     setMetrics({
@@ -231,10 +233,11 @@ const StrategyForm = () => {
         }
       });
       const formData = {
-        asset: e.target.asset.value,
+        underlying_asset: underlyingAsset,
+        settlement_asset: settlementAsset,
         open_date: e.target['open-date'].value,
         close_date: e.target['close-date'].value || null,
-        strategy_type: metrics.strategyName, // Use metrics.strategyName
+        strategy_type: metrics.strategyName,
         legs: Object.values(legData),
         margin_required: parseFloat(marginRequired),
         asset_price: parseFloat(assetPrice),
@@ -278,24 +281,34 @@ const StrategyForm = () => {
             Strategy Builder
           </h2>
           <div className="space-y-6">
-            {/* Collateral Asset Selection */}
+            {/* Underlying Asset Selection */}
             <div className="border-b border-gray-700 pb-4">
-              <label
-                htmlFor="collateral-asset"
-                className="block text-sm font-medium mb-2 text-[#C9D1D9]"
-              >
-                Collateral Asset
-              </label>
+              <label htmlFor="underlying-asset" className="block text-sm font-medium mb-2 text-[#C9D1D9]">Underlying Asset</label>
               <Select
-                id="collateral-asset"
-                name="collateral-asset"
-                value={asset}
-                onChange={(e) => setAsset(e.target.value)}
+                id="underlying-asset"
+                name="underlying-asset"
+                value={underlyingAsset}
+                onChange={e => setUnderlyingAsset(e.target.value)}
                 required
               >
                 <option value="">Select Asset</option>
-                {/* Dynamically populate from wallet/capital */}
-                {(window.capitalAssets || ["BTC","ETH","SOL"]).map((a, idx) => (
+                {["BTC","ETH","SOL","USD"].map((a, idx) => (
+                  <option key={idx} value={a}>{a}</option>
+                ))}
+              </Select>
+            </div>
+            {/* Settlement Asset Selection */}
+            <div className="border-b border-gray-700 pb-4">
+              <label htmlFor="settlement-asset" className="block text-sm font-medium mb-2 text-[#C9D1D9]">Settlement Asset</label>
+              <Select
+                id="settlement-asset"
+                name="settlement-asset"
+                value={settlementAsset}
+                onChange={e => setSettlementAsset(e.target.value)}
+                required
+              >
+                <option value="">Select Asset</option>
+                {["BTC","ETH","SOL","USD"].map((a, idx) => (
                   <option key={idx} value={a}>{a}</option>
                 ))}
               </Select>
@@ -373,11 +386,8 @@ const StrategyForm = () => {
             {/* Margin and Asset Price */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-b border-gray-700 pb-4">
               <div>
-                <label
-                  htmlFor="margin-required"
-                  className="block text-sm font-medium mb-2 text-[#C9D1D9]"
-                >
-                  Margin Required ($)
+                <label htmlFor="margin-required" className="block text-sm font-medium mb-2 text-[#C9D1D9]">
+                  Margin Required ({settlementAsset || 'Asset'})
                 </label>
                 <Input
                   type="number"
@@ -388,11 +398,8 @@ const StrategyForm = () => {
                 />
               </div>
               <div>
-                <label
-                  htmlFor="asset-price"
-                  className="block text-sm font-medium mb-2 text-[#C9D1D9]"
-                >
-                  Asset Price at Entry ($)
+                <label htmlFor="asset-price" className="block text-sm font-medium mb-2 text-[#C9D1D9]">
+                  Asset Price at Entry ({underlyingAsset || 'Asset'})
                 </label>
                 <Input
                   type="number"
@@ -426,13 +433,10 @@ const StrategyForm = () => {
               </div>
               {tradeOutcome !== "pending" && (
                 <div>
-                  <label
-                    htmlFor="pnl-amount"
-                    className="block text-sm font-medium mb-2 text-[#C9D1D9]"
-                  >
+                  <label htmlFor="pnl-amount" className="block text-sm font-medium mb-2 text-[#C9D1D9]">
                     {tradeOutcome === "profit"
-                      ? "Profit Amount ($)"
-                      : "Loss Amount ($)"}
+                      ? `Profit Amount (${settlementAsset || 'Asset'})`
+                      : `Loss Amount (${settlementAsset || 'Asset'})`}
                   </label>
                   <Input
                     type="number"
