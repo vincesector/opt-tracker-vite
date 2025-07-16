@@ -90,11 +90,6 @@ function App() {
     intervalId = setInterval(fetchPrices, 60000);
     return () => clearInterval(intervalId);
   }, [capital]);
-
-        console.error('Error loading stats:', error);
-      }
-    };
-    loadStats();
     // Subscribe to strategy changes to update stats
     const subscription = supabase
       .channel('strategies_channel')
