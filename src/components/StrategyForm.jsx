@@ -278,25 +278,26 @@ const StrategyForm = () => {
             Strategy Builder
           </h2>
           <div className="space-y-6">
-            {/* Asset Selection */}
+            {/* Collateral Asset Selection */}
             <div className="border-b border-gray-700 pb-4">
               <label
-                htmlFor="asset"
+                htmlFor="collateral-asset"
                 className="block text-sm font-medium mb-2 text-[#C9D1D9]"
               >
-                Asset
+                Collateral Asset
               </label>
               <Select
-                id="asset"
-                name="asset"
+                id="collateral-asset"
+                name="collateral-asset"
                 value={asset}
-                onChange={(e) => setAsset(e.target.value)} // Use the state setter
+                onChange={(e) => setAsset(e.target.value)}
                 required
               >
                 <option value="">Select Asset</option>
-                <option value="BTC">BTC</option>
-                <option value="ETH">ETH</option>
-                <option value="SOL">SOL</option>
+                {/* Dynamically populate from wallet/capital */}
+                {(window.capitalAssets || ["BTC","ETH","SOL"]).map((a, idx) => (
+                  <option key={idx} value={a}>{a}</option>
+                ))}
               </Select>
             </div>
 

@@ -370,6 +370,9 @@ const SavedStrategies = () => {
           <tbody className="[&>*:nth-child(even)]:bg-gray-850">
             {strategies.slice((page - 1) * rowsPerPage, page * rowsPerPage).map((strategy) => {
               const strategyRoiValue = strategyRoi(strategy);
+              const price = prices?.[strategy.asset] || 0;
+              const valueUSD = price * (strategy.margin_required || 0);
+              const roiUSD = strategy.roi ? ((strategy.roi / 100) * valueUSD) : 0;
               return (
                 <tr key={strategy.id} className="hover:bg-gray-700">
                   <td className="table-cell py-2 px-2">{strategy.asset}</td>
@@ -389,6 +392,9 @@ const SavedStrategies = () => {
                   </td>
                   <td className="table-cell py-2 px-2 text-right">${strategy.margin_required}</td>
                   <td className="table-cell py-2 px-2 text-right">${strategy.asset_price}</td>
+                  <td className="table-cell py-2 px-2 text-right">{price ? `$${price.toLocaleString('en-US', { maximumFractionDigits: 2 })}` : '-'}</td>
+                  <td className="table-cell py-2 px-2 text-right">{showNative ? `${strategy.margin_required} ${strategy.asset}` : valueUSD ? valueUSD.toLocaleString('en-US', { style: 'currency', currency: 'USD' }) : '-'}</td>
+                  <td className="table-cell py-2 px-2 text-right">{showNative ? `${strategy.roi?.toFixed(2)}%` : roiUSD ? roiUSD.toLocaleString('en-US', { style: 'currency', currency: 'USD' }) : '-'}</td>
                   <td className="table-cell py-2 px-2 text-center">
                     <span className={`tag ${strategy.trade_outcome === 'profit' ? 'tag-profit' : strategy.trade_outcome === 'loss' ? 'tag-loss' : 'bg-[#30363D] text-[#8B949E]'}`}>
                       {strategy.trade_outcome.charAt(0).toUpperCase() + strategy.trade_outcome.slice(1)}

@@ -4,6 +4,7 @@ import StrategyForm from './components/StrategyForm';
 import SavedStrategies from './components/SavedStrategies';
 import Dashboard from './components/Dashboard';
 import Settings from './components/Settings';
+import CapitalSetupPanel from './components/CapitalSetupPanel';
 import { storageService } from './services/storageService';
 import { supabase } from './services/supabase';
 import LoginModal from './components/LoginModal';
@@ -19,6 +20,10 @@ function App() {
   });
   const [user, setUser] = useState(null);
   const [loginModalOpen, setLoginModalOpen] = useState(false);
+  // Capital state: array of { asset, amount, purchasePrice }
+  const [capital, setCapital] = useState([]);
+  const [prices, setPrices] = useState({});
+  const [showNative, setShowNative] = useState(false);
 
   useEffect(() => {
     const loadStats = async () => {
@@ -26,6 +31,66 @@ function App() {
         const stats = await storageService.getStats();
         setStats(stats);
       } catch (error) {
+        console.error('Error loading stats:', error);
+      }
+    };
+    loadStats();
+    // Subscribe to strategy changes to update stats
+    const subscription = supabase
+      .channel('strategies_channel')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'strategies',
+      }, () => {
+        loadStats();
+      })
+      .subscribe();
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  // Fetch live prices for all assets in capital, every minute
+  useEffect(() => {
+    let intervalId;
+    async function fetchPrices() {
+      if (!capital.length) return setPrices({});
+      const assetMap = {
+        ETH: 'ethereum',
+        BTC: 'bitcoin',
+        SOL: 'solana',
+        USDC: 'usd-coin',
+        USDT: 'tether',
+        ARB: 'arbitrum',
+        OP: 'optimism',
+        AVAX: 'avalanche-2',
+        MATIC: 'matic-network',
+        LINK: 'chainlink',
+        DOGE: 'dogecoin',
+        XRP: 'ripple',
+        BNB: 'binancecoin',
+        // Add more as needed
+      };
+      const idsList = capital.map(a => assetMap[a.asset] || a.asset.toLowerCase()).join(',');
+      try {
+        const res = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${idsList}&vs_currencies=usd`);
+        const data = await res.json();
+        const newPrices = {};
+        capital.forEach(a => {
+          const id = assetMap[a.asset] || a.asset.toLowerCase();
+          newPrices[a.asset] = data[id]?.usd || 0;
+        });
+        setPrices(newPrices);
+      } catch (e) {
+        setPrices({});
+      }
+    }
+    fetchPrices();
+    intervalId = setInterval(fetchPrices, 60000);
+    return () => clearInterval(intervalId);
+  }, [capital]);
+
         console.error('Error loading stats:', error);
       }
     };
@@ -127,25 +192,25 @@ function App() {
             </div>
           </div>
         </header>
-        
         <main className="flex-grow p-4 lg:p-8">
           <div className="max-w-7xl mx-auto space-y-8">
-            <Routes>
-              <Route path="/" element={
-                <>
-                  {/* Portfolio Stats card removed from here. Now only rendered in SavedStrategies.jsx */}
-                  <StrategyForm />
-                  <div className="mt-8">
-                    <SavedStrategies />
-                  </div>
-                </>
-              } />
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/settings" element={<Settings />} />
-            </Routes>
+            <div className="flex items-center justify-end mb-4">
+              <label className="mr-2 text-sm text-[#8B949E]">Display:</label>
+              <button
+                className={`btn btn-secondary px-3 py-1 ${showNative ? 'bg-emerald-600 text-white' : ''}`}
+                onClick={() => setShowNative(s => !s)}
+              >
+                {showNative ? 'Native Asset' : 'USD'}
+              </button>
+            </div>
+            <CapitalSetupPanel capital={capital} setCapital={setCapital} />
+            <CapitalWallet capital={capital} prices={prices} showNative={showNative} />
+            <StrategyForm capital={capital.map(a => a.asset)} />
+            <div className="mt-8">
+              <SavedStrategies prices={prices} showNative={showNative} />
+            </div>
           </div>
         </main>
-
         <footer className="glass-card fade-in-up mt-auto border-t border-[#30363D] bg-[#161B22]">
           <div className="max-w-7xl mx-auto py-8 px-4 lg:px-8">
             <div className="flex flex-col md:flex-row justify-between items-center text-sm text-gray-400">
