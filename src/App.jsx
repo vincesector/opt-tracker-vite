@@ -191,23 +191,44 @@ function App() {
           </div>
         </header>
         <main className="flex-grow p-4 lg:p-8">
-          <div className="max-w-7xl mx-auto space-y-8">
-            <div className="flex items-center justify-end mb-4">
-              <label className="mr-2 text-sm text-[#8B949E]">Display:</label>
-              <button
-                className={`btn btn-secondary px-3 py-1 ${showNative ? 'bg-emerald-600 text-white' : ''}`}
-                onClick={() => setShowNative(s => !s)}
-              >
-                {showNative ? 'Native Asset' : 'USD'}
-              </button>
-            </div>
-            <CapitalSetupPanel capital={capital} setCapital={setCapital} />
-            <CapitalWallet capital={capital} prices={prices} showNative={showNative} />
-            <StrategyForm capital={capital.map(a => a.asset)} />
-            <div className="mt-8">
-              <SavedStrategies prices={prices} showNative={showNative} />
-            </div>
-          </div>
+          <Routes>
+            <Route path="/dashboard" element={
+              <Dashboard
+                capital={capital}
+                setCapital={setCapital}
+                prices={prices}
+                showNative={showNative}
+              />
+            } />
+            <Route path="/" element={
+              <div className="max-w-7xl mx-auto space-y-8">
+                <StrategyForm
+                  capital={capital.map(a => a.asset)}
+                  onStrategySaved={strategy => {
+                    if (!strategy || typeof strategy.pnl !== 'number' || !strategy.settlement_asset) return;
+                    setCapital(prev => {
+                      const idx = prev.findIndex(a => a.asset === strategy.settlement_asset);
+                      if (idx !== -1) {
+                        // Update existing asset
+                        const updated = [...prev];
+                        updated[idx] = {
+                          ...updated[idx],
+                          amount: (parseFloat(updated[idx].amount) || 0) + strategy.pnl
+                        };
+                        return updated;
+                      } else {
+                        // Add new asset
+                        return [...prev, { asset: strategy.settlement_asset, amount: strategy.pnl, purchasePrice: 0 }];
+                      }
+                    });
+                  }}
+                />
+                <div className="mt-8">
+                  <SavedStrategies prices={prices} showNative={showNative} />
+                </div>
+              </div>
+            } />
+          </Routes>
         </main>
         <footer className="glass-card fade-in-up mt-auto border-t border-[#30363D] bg-[#161B22]">
           <div className="max-w-7xl mx-auto py-8 px-4 lg:px-8">

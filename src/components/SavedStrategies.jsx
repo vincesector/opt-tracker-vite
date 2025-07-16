@@ -350,7 +350,8 @@ const SavedStrategies = ({ prices, showNative }) => {
         <table className="w-full min-w-[1200px]">
           <thead>
             <tr>
-              <th className="table-header px-2">Asset</th>
+              <th className="table-header px-2">Underlying</th>
+              <th className="table-header px-2">Settlement</th>
               <th className="table-header px-2">Strat</th>
               <th className="table-header px-2">Open</th>
               <th className="table-header px-2">Close</th>
@@ -370,31 +371,28 @@ const SavedStrategies = ({ prices, showNative }) => {
           <tbody className="[&>*:nth-child(even)]:bg-gray-850">
             {strategies.slice((page - 1) * rowsPerPage, page * rowsPerPage).map((strategy) => {
               const strategyRoiValue = strategyRoi(strategy);
-              const price = prices?.[strategy.asset] || 0;
-              const valueUSD = price * (strategy.margin_required || 0);
-              const roiUSD = strategy.roi ? ((strategy.roi / 100) * valueUSD) : 0;
+              const price = prices?.[strategy.underlying_asset] || 0;
+              const marginNative = strategy.margin_required;
+              const marginUSD = price * marginNative;
+              const roiNative = strategy.roi;
+              const roiUSD = roiNative ? ((roiNative / 100) * marginUSD) : 0;
+              const assetSymbol = strategy.settlement_asset === 'BTC' ? '₿' : strategy.settlement_asset === 'ETH' ? 'Ξ' : strategy.settlement_asset === 'SOL' ? '◎' : '$';
               return (
                 <tr key={strategy.id} className="hover:bg-gray-700">
-                  <td className="table-cell py-2 px-2">{strategy.asset}</td>
+                  <td className="table-cell py-2 px-2">{strategy.underlying_asset}</td>
+                  <td className="table-cell py-2 px-2">{strategy.settlement_asset}</td>
                   <td className="table-cell py-2 px-2">{strategy.strategy_type}</td>
                   <td className="table-cell py-2 px-2">{shortDate(strategy.open_date)}</td>
                   <td className="table-cell py-2 px-2">{shortDate(strategy.close_date)}</td>
                   <td className="table-cell py-2 px-2">{strategy.legs.length}</td>
-                  <td className="table-cell py-2 px-2 text-right">
-                    {strategy.legs.reduce((sum, leg) => sum + parseInt(leg.contracts), 0)}
-                  </td>
-                  <td className="table-cell py-2 px-2 text-right">${strategy.net_premium}</td>
-                  <td className="table-cell py-2 px-2 text-right">
-                    {strategy.max_profit === 'Unlimited' ? 'Unl.' : `$${strategy.max_profit}`}
-                  </td>
-                  <td className="table-cell py-2 px-2 text-right">
-                    {strategy.max_loss === 'Unlimited' ? 'Unl.' : `-$${Math.abs(strategy.max_loss)}`}
-                  </td>
-                  <td className="table-cell py-2 px-2 text-right">${strategy.margin_required}</td>
-                  <td className="table-cell py-2 px-2 text-right">${strategy.asset_price}</td>
+                  <td className="table-cell py-2 px-2 text-right">{strategy.legs.reduce((sum, leg) => sum + parseInt(leg.contracts), 0)}</td>
+                  <td className="table-cell py-2 px-2 text-right">{showNative ? `${assetSymbol}${strategy.net_premium}` : `$${(strategy.net_premium * price).toLocaleString('en-US', { maximumFractionDigits: 2 })}`}</td>
+                  <td className="table-cell py-2 px-2 text-right">{showNative ? `${assetSymbol}${strategy.max_profit}` : `$${(strategy.max_profit * price).toLocaleString('en-US', { maximumFractionDigits: 2 })}`}</td>
+                  <td className="table-cell py-2 px-2 text-right">{showNative ? `${assetSymbol}${Math.abs(strategy.max_loss)}` : `$${(Math.abs(strategy.max_loss) * price).toLocaleString('en-US', { maximumFractionDigits: 2 })}`}</td>
+                  <td className="table-cell py-2 px-2 text-right">{showNative ? `${marginNative} ${strategy.settlement_asset}` : `$${marginUSD.toLocaleString('en-US', { maximumFractionDigits: 2 })}`}</td>
+                  <td className="table-cell py-2 px-2 text-right">{showNative ? `${strategy.asset_price} ${strategy.underlying_asset}` : `$${(strategy.asset_price * price).toLocaleString('en-US', { maximumFractionDigits: 2 })}`}</td>
                   <td className="table-cell py-2 px-2 text-right">{price ? `$${price.toLocaleString('en-US', { maximumFractionDigits: 2 })}` : '-'}</td>
-                  <td className="table-cell py-2 px-2 text-right">{showNative ? `${strategy.margin_required} ${strategy.asset}` : valueUSD ? valueUSD.toLocaleString('en-US', { style: 'currency', currency: 'USD' }) : '-'}</td>
-                  <td className="table-cell py-2 px-2 text-right">{showNative ? `${strategy.roi?.toFixed(2)}%` : roiUSD ? roiUSD.toLocaleString('en-US', { style: 'currency', currency: 'USD' }) : '-'}</td>
+                  <td className="table-cell py-2 px-2 text-right">{showNative ? `${roiNative?.toFixed(2)}%` : roiUSD ? roiUSD.toLocaleString('en-US', { style: 'currency', currency: 'USD' }) : '-'}</td>
                   <td className="table-cell py-2 px-2 text-center">
                     <span className={`tag ${strategy.trade_outcome === 'profit' ? 'tag-profit' : strategy.trade_outcome === 'loss' ? 'tag-loss' : 'bg-[#30363D] text-[#8B949E]'}`}>
                       {strategy.trade_outcome.charAt(0).toUpperCase() + strategy.trade_outcome.slice(1)}
@@ -403,14 +401,14 @@ const SavedStrategies = ({ prices, showNative }) => {
                   <td className="table-cell py-2 px-2 text-right">
                     {strategy.trade_outcome !== 'pending' ? (
                       <span className={strategy.trade_outcome === 'loss' ? 'text-red-400' : 'text-green-400'}>
-                        {strategy.trade_outcome === 'loss' ? '-' : ''}${Math.abs(strategy.pnl).toFixed(2)}
+                        {strategy.trade_outcome === 'loss' ? '-' : ''}{showNative ? `${assetSymbol}${Math.abs(strategy.pnl).toFixed(2)}` : `$${(Math.abs(strategy.pnl) * price).toLocaleString('en-US', { maximumFractionDigits: 2 })}`}
                       </span>
                     ) : ''}
                   </td>
                   <td className="table-cell py-2 px-2 text-right">
                     {strategy.trade_outcome === 'pending' ? (
                       <span className="text-[#8B949E]">
-                        Max: {((strategy.max_profit / strategy.margin_required) * 100).toFixed(2)}%
+                        Max: {((strategy.max_profit / marginNative) * 100).toFixed(2)}%
                       </span>
                     ) : (
                       <span className={strategy.trade_outcome === 'loss' ? 'text-red-400' : 'text-green-400'}>
@@ -428,10 +426,7 @@ const SavedStrategies = ({ prices, showNative }) => {
                         <span className="material-icons text-sm">edit</span>
                       </button>
                       <button
-                        onClick={async () => {
-                          await storageService.deleteStrategy(strategy.id);
-                          setStrategies(strategies.filter(s => s.id !== strategy.id));
-                        }}
+                        onClick={() => handleDeleteStrategy(strategy.id)}
                         className="btn btn-danger p-1"
                         title="Delete strategy"
                       >

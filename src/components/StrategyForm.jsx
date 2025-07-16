@@ -29,7 +29,7 @@ import { storageService } from '../services/storageService';
  * Manages the state of the option legs, calculates strategy metrics, and updates the payoff chart.
  * @returns {JSX.Element}
  */
-const StrategyForm = () => {
+const StrategyForm = ({ capital, onStrategySaved }) => {
   const [user, setUser] = useState(null);
   useEffect(() => {
     const getUser = async () => {
@@ -253,6 +253,7 @@ const StrategyForm = () => {
       console.log('Submitting form data:', JSON.stringify(formData, null, 2));
       const savedStrategy = await storageService.saveStrategy(formData);
       console.log('Strategy saved successfully:', savedStrategy);
+      if (onStrategySaved) onStrategySaved(formData);
       resetForm();
       // Optionally add a small delay to ensure the UI updates
       await new Promise(resolve => setTimeout(resolve, 100));
