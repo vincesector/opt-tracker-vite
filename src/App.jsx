@@ -5,6 +5,7 @@ import SavedStrategies from './components/SavedStrategies';
 import Dashboard from './components/Dashboard';
 import Settings from './components/Settings';
 import CapitalSetupPanel from './components/CapitalSetupPanel';
+import CapitalWallet from './components/CapitalWallet';
 import { storageService } from './services/storageService';
 import { supabase } from './services/supabase';
 import LoginModal from './components/LoginModal';
