@@ -101,7 +101,7 @@ const TradeOutcomePopup = ({ isOpen, onClose, strategy, onUpdate }) => {
   );
 };
 
-const SavedStrategies = () => {
+const SavedStrategies = ({ prices, showNative }) => {
   const [strategies, setStrategies] = useState([]);
   const [editingStrategy, setEditingStrategy] = useState(null);
   const [loading, setLoading] = useState(true);
