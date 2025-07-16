@@ -293,7 +293,7 @@ const StrategyForm = ({ capital, onStrategySaved }) => {
                 required
               >
                 <option value="">Select Asset</option>
-                {["BTC","ETH","SOL","USD"].map((a, idx) => (
+                {["BTC","ETH","SOL"].map((a, idx) => (
                   <option key={idx} value={a}>{a}</option>
                 ))}
               </Select>
@@ -309,7 +309,7 @@ const StrategyForm = ({ capital, onStrategySaved }) => {
                 required
               >
                 <option value="">Select Asset</option>
-                {["BTC","ETH","SOL","USD"].map((a, idx) => (
+                {["USD","BTC","ETH","SOL"].map((a, idx) => (
                   <option key={idx} value={a}>{a}</option>
                 ))}
               </Select>

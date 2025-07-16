@@ -379,8 +379,8 @@ const SavedStrategies = ({ prices, showNative }) => {
               const assetSymbol = strategy.settlement_asset === 'BTC' ? '₿' : strategy.settlement_asset === 'ETH' ? 'Ξ' : strategy.settlement_asset === 'SOL' ? '◎' : '$';
               return (
                 <tr key={strategy.id} className="hover:bg-gray-700">
-                  <td className="table-cell py-2 px-2">{strategy.underlying_asset}</td>
-                  <td className="table-cell py-2 px-2">{strategy.settlement_asset}</td>
+                  <td className="table-cell py-2 px-2">{strategy.underlying_asset || '-'}</td>
+                  <td className="table-cell py-2 px-2">{strategy.settlement_asset || '-'}</td>
                   <td className="table-cell py-2 px-2">{strategy.strategy_type}</td>
                   <td className="table-cell py-2 px-2">{shortDate(strategy.open_date)}</td>
                   <td className="table-cell py-2 px-2">{shortDate(strategy.close_date)}</td>

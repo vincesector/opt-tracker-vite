@@ -198,6 +198,8 @@ function App() {
                 setCapital={setCapital}
                 prices={prices}
                 showNative={showNative}
+                CapitalSetupPanel={<CapitalSetupPanel capital={capital} setCapital={setCapital} />}
+                CapitalWallet={<CapitalWallet capital={capital} prices={prices} showNative={showNative} />}
               />
             } />
             <Route path="/" element={
